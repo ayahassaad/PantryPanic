@@ -90,7 +90,7 @@ export default async function SuggestRecipePage({
           <span className="text-xs text-neutral-500">Optional.</span>
         </label>
 
-        <SubmitButton />
+        <SubmitButton hasError={Boolean(error)} />
       </form>
     </main>
   );
