@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS } from "@pantry-panic/shared";
 import { suggestRecipe } from "./actions";
+import { SubmitButton } from "./submit-button";
 
 export default async function SuggestRecipePage({
   searchParams,
@@ -47,7 +48,7 @@ export default async function SuggestRecipePage({
         </p>
       )}
 
-      <form className="flex flex-col gap-5">
+      <form action={suggestRecipe} className="flex flex-col gap-5">
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
           Ingredients
           <textarea
@@ -89,12 +90,7 @@ export default async function SuggestRecipePage({
           <span className="text-xs text-neutral-500">Optional.</span>
         </label>
 
-        <button
-          formAction={suggestRecipe}
-          className="mt-2 w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
-        >
-          Suggest a recipe
-        </button>
+        <SubmitButton />
       </form>
     </main>
   );
