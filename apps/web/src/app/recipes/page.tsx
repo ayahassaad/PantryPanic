@@ -72,7 +72,12 @@ export default async function RecipesPage() {
             className="rounded-lg border border-neutral-200 px-5 py-4"
           >
             <h2 className="text-lg font-medium text-neutral-900">
-              {recipe.title}
+              <Link
+                href={`/recipes/${recipe.id}`}
+                className="hover:underline"
+              >
+                {recipe.title}
+              </Link>
             </h2>
             {recipe.description && (
               <p className="mt-1 text-sm text-neutral-600">
