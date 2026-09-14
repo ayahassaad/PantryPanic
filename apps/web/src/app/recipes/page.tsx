@@ -47,12 +47,20 @@ export default async function RecipesPage() {
             Recipe library
           </h1>
         </div>
-        <Link
-          href="/recipes/new"
-          className="mt-1 w-fit flex-none rounded-md bg-basil-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-basil-700"
-        >
-          New recipe
-        </Link>
+        <div className="mt-1 flex flex-none items-center gap-3">
+          <Link
+            href="/recipes/suggest"
+            className="w-fit rounded-md border border-basil-600 px-4 py-2 text-sm font-medium text-basil-700 transition hover:bg-basil-50"
+          >
+            Suggest with AI
+          </Link>
+          <Link
+            href="/recipes/new"
+            className="w-fit rounded-md bg-basil-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-basil-700"
+          >
+            New recipe
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -71,13 +79,18 @@ export default async function RecipesPage() {
             key={recipe.id}
             className="rounded-lg border border-neutral-200 px-5 py-4"
           >
-            <h2 className="text-lg font-medium text-neutral-900">
+            <h2 className="flex items-center gap-2 text-lg font-medium text-neutral-900">
               <Link
                 href={`/recipes/${recipe.id}`}
                 className="hover:underline"
               >
                 {recipe.title}
               </Link>
+              {recipe.source === "ai" && (
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">
+                  AI suggested
+                </span>
+              )}
             </h2>
             {recipe.description && (
               <p className="mt-1 text-sm text-neutral-600">
