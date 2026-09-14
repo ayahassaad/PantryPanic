@@ -38,12 +38,22 @@ export default async function RecipesPage() {
         &larr; Back to dashboard
       </Link>
 
-      <p className="mb-2 font-mono text-xs uppercase tracking-widest text-basil-600">
-        Recipes
-      </p>
-      <h1 className="mb-8 text-3xl font-semibold tracking-tight text-basil-700">
-        Recipe library
-      </h1>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-2 font-mono text-xs uppercase tracking-widest text-basil-600">
+            Recipes
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-basil-700">
+            Recipe library
+          </h1>
+        </div>
+        <Link
+          href="/recipes/new"
+          className="mt-1 w-fit flex-none rounded-md bg-basil-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-basil-700"
+        >
+          New recipe
+        </Link>
+      </div>
 
       {error && (
         <p className="mb-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
