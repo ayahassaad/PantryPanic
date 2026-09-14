@@ -1,14 +1,16 @@
-const DAY_ONE_CHECKLIST = [
-  "Monorepo scaffolded (web, mobile, shared packages)",
-  "CI running on every commit",
-  "This page live on a Vercel preview URL",
-] as const;
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-16">
       <p className="mb-3 font-mono text-xs uppercase tracking-widest text-basil-600">
-        Day 1 — foundations
+        Day 3 — accounts
       </p>
       <h1 className="mb-4 text-4xl font-semibold tracking-tight text-basil-700">
         Pantry Panic
@@ -17,14 +19,30 @@ export default function Home() {
         Plan a week of dinners and lunches, get an AI recipe when you don&apos;t
         know what to make, and turn it all into one shopping list.
       </p>
-      <ul className="flex flex-col gap-2">
-        {DAY_ONE_CHECKLIST.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm text-neutral-700">
-            <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full bg-basil-600" />
-            {item}
-          </li>
-        ))}
-      </ul>
+
+      {user ? (
+        <Link
+          href="/dashboard"
+          className="w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
+        >
+          Go to your dashboard
+        </Link>
+      ) : (
+        <div className="flex items-center gap-4">
+          <Link
+            href="/signup"
+            className="w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
+          >
+            Sign up
+          </Link>
+          <Link
+            href="/login"
+            className="text-sm font-medium text-basil-600 underline underline-offset-2"
+          >
+            Log in
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
