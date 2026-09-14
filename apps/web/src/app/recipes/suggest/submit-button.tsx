@@ -13,6 +13,15 @@ import { useEffect, useState } from "react";
 // (it needs React 19) — calling it threw "Cannot read properties of
 // undefined (reading 'call')" at runtime.
 //
+// Important: this deliberately never sets the real `disabled` attribute.
+// Flipping a submit button to disabled inside its own click handler can
+// make the browser cancel the form submission entirely (observed here —
+// the POST never even reached the server), because by the time the
+// browser goes to submit, the button already looks disabled. Pointer-events
+// + aria-disabled fake the same look without touching real disabled state,
+// and the `pending` check in onClick still blocks a second click from
+// double-submitting.
+//
 // hasError flips back to true when the server action redirects back here
 // with ?error=..., which resets the pending state — otherwise a failed
 // submission would leave the button stuck saying "Thinking of something…"
@@ -28,19 +37,25 @@ export function SubmitButton({ hasError }: { hasError: boolean }) {
   return (
     <button
       type="submit"
-      disabled={pending}
+      aria-disabled={pending}
       aria-busy={pending}
       onClick={(event) => {
+        if (pending) {
+          event.preventDefault();
+          return;
+        }
         // Only flip to "pending" if the form is actually about to submit —
         // otherwise a blocked native validation (e.g. the required
         // ingredients field being empty) would leave the button stuck
-        // disabled with nothing happening.
+        // looking disabled with nothing happening.
         const form = event.currentTarget.form;
         if (form && form.checkValidity()) {
           setPending(true);
         }
       }}
-      className="mt-2 w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700 disabled:cursor-not-allowed disabled:opacity-60"
+      className={`mt-2 w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700 ${
+        pending ? "pointer-events-none cursor-not-allowed opacity-60" : ""
+      }`}
     >
       {pending ? "Thinking of something…" : "Suggest a recipe"}
     </button>
