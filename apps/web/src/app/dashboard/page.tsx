@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "./actions";
@@ -21,17 +22,25 @@ export default async function DashboardPage() {
         Welcome, {user.email}
       </h1>
       <p className="mb-8 max-w-md text-base text-neutral-600">
-        This is where your recipes, meal plan, and shopping list will live.
-        We&apos;re building those next.
+        This is where your meal plan and shopping list will live. We&apos;re
+        building those next.
       </p>
-      <form>
-        <button
-          formAction={logout}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+      <div className="flex items-center gap-4">
+        <Link
+          href="/recipes"
+          className="w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
         >
-          Log out
-        </button>
-      </form>
+          Browse recipes
+        </Link>
+        <form>
+          <button
+            formAction={logout}
+            className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+          >
+            Log out
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
