@@ -32,6 +32,12 @@ export default async function DashboardPage() {
         >
           Browse recipes
         </Link>
+        <Link
+          href="/profile"
+          className="w-fit rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+        >
+          Edit profile
+        </Link>
         <form>
           <button
             formAction={logout}
