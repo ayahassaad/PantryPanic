@@ -9,6 +9,12 @@ import {
 } from "@/lib/anthropic/suggest-recipe";
 import { RecipeSuggestionInputSchema } from "@pantry-panic/shared";
 
+// Each call to Claude costs real money whether or not it succeeds, so cap
+// how many suggestion attempts one user can make in a rolling window.
+// Bump these if 10/day turns out to be too tight for normal use.
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const RATE_LIMIT_WINDOW_HOURS = 24;
+
 export async function suggestRecipe(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -40,6 +46,42 @@ export async function suggestRecipe(formData: FormData) {
         parsed.error.issues[0]?.message ?? "Check what you entered and try again.",
       )}`,
     );
+  }
+
+  // Count this user's attempts in the last RATE_LIMIT_WINDOW_HOURS. Fail
+  // OPEN if the count itself errors out (e.g. a transient DB hiccup) —
+  // a rate limiter that's down shouldn't also take the whole feature down
+  // with it, and we still log the attempt below either way.
+  const since = new Date(
+    Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+  const { count: recentRequestCount, error: countError } = await supabase
+    .from("ai_recipe_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", user.id)
+    .gte("created_at", since);
+
+  if (countError) {
+    console.error(
+      "[recipes/suggest] couldn't check AI rate limit, allowing request:",
+      countError,
+    );
+  } else if ((recentRequestCount ?? 0) >= RATE_LIMIT_MAX_REQUESTS) {
+    redirect(
+      `/recipes/suggest?error=${encodeURIComponent(
+        `You've hit the limit of ${RATE_LIMIT_MAX_REQUESTS} AI suggestions per day. Try again later, or add a recipe yourself in the meantime.`,
+      )}`,
+    );
+  }
+
+  // Log the attempt before calling Claude, not after — the point is to cap
+  // how many times we *call* the API, and this way a slow or failed call
+  // still counts against the limit instead of being freely retryable.
+  const { error: logError } = await supabase
+    .from("ai_recipe_requests")
+    .insert({ owner_id: user.id });
+  if (logError) {
+    console.error("[recipes/suggest] failed to log AI request:", logError);
   }
 
   let result: Awaited<ReturnType<typeof generateRecipeSuggestion>>;
