@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 // Splits a comma-separated field ("vegetarian, gluten-free") into a clean
@@ -14,6 +15,15 @@ function parseList(raw: string | null): string[] {
     .filter(Boolean);
 }
 
+// Same spirit as the caps in recipes/new/actions.ts — not enforcing any
+// particular shape, just keeping a pasted wall of text from turning into
+// an oversized database row.
+const ProfileUpdateSchema = z.object({
+  fullName: z.string().trim().max(200).optional(),
+  dietaryPreferences: z.array(z.string().trim().min(1).max(50)).max(20),
+  allergies: z.array(z.string().trim().min(1).max(50)).max(20),
+});
+
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -25,10 +35,25 @@ export async function updateProfile(formData: FormData) {
   }
 
   const fullNameRaw = (formData.get("fullName") as string) ?? "";
-  const fullName = fullNameRaw.trim();
-
   const dietaryPreferences = parseList(formData.get("dietaryPreferences") as string | null);
   const allergies = parseList(formData.get("allergies") as string | null);
+
+  const parsed = ProfileUpdateSchema.safeParse({
+    fullName: fullNameRaw.trim() || undefined,
+    dietaryPreferences,
+    allergies,
+  });
+
+  if (!parsed.success) {
+    redirect(
+      `/profile?error=${encodeURIComponent(
+        parsed.error.issues[0]?.message ?? "Check what you entered and try again.",
+      )}`,
+    );
+  }
+
+  const { fullName, dietaryPreferences: validDietaryPreferences, allergies: validAllergies } =
+    parsed.data;
 
   // The "update" RLS policy on profiles only allows a row where
   // id = auth.uid(), so this can only ever touch the caller's own row —
@@ -37,8 +62,8 @@ export async function updateProfile(formData: FormData) {
     .from("profiles")
     .update({
       full_name: fullName || null,
-      dietary_preferences: dietaryPreferences,
-      allergies,
+      dietary_preferences: validDietaryPreferences,
+      allergies: validAllergies,
     })
     .eq("id", user.id);
 
