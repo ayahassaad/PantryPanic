@@ -19,6 +19,18 @@ const NewRecipeSchema = z.object({
   ingredients: z.array(z.string().trim().min(1).max(200)).max(100),
 });
 
+// Mirrors the recipe-images Storage bucket's own file_size_limit and
+// allowed_mime_types (see the 20260916120000 migration) — checking here
+// too just means a rejected image gets a friendly redirect instead of a
+// raw Storage API error.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+
 export async function createRecipe(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -34,6 +46,7 @@ export async function createRecipe(formData: FormData) {
   const tagsRaw = (formData.get("tags") as string) ?? "";
   const stepsRaw = (formData.get("steps") as string) ?? "";
   const ingredientsRaw = (formData.get("ingredients") as string) ?? "";
+  const imageFile = formData.get("image");
 
   const tags = tagsRaw
     .split(",")
@@ -66,6 +79,49 @@ export async function createRecipe(formData: FormData) {
     );
   }
 
+  const hasImage = imageFile instanceof File && imageFile.size > 0;
+
+  if (hasImage) {
+    if (imageFile.size > MAX_IMAGE_BYTES) {
+      redirect(
+        `/recipes/new?error=${encodeURIComponent(
+          "That image is too large — 5MB max.",
+        )}`,
+      );
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(imageFile.type)) {
+      redirect(
+        `/recipes/new?error=${encodeURIComponent(
+          "Images must be PNG, JPEG, WebP, or GIF.",
+        )}`,
+      );
+    }
+  }
+
+  let imageUrl: string | null = null;
+
+  if (hasImage) {
+    // Stored under <user id>/<random name> — the Storage RLS policies
+    // check that path prefix against auth.uid(), so this is also what
+    // makes this upload allowed in the first place.
+    const extension = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("recipe-images")
+      .upload(path, imageFile, { contentType: imageFile.type });
+
+    if (uploadError) {
+      redirect(
+        `/recipes/new?error=${encodeURIComponent(
+          `Couldn't upload that image: ${uploadError.message}`,
+        )}`,
+      );
+    }
+
+    imageUrl = supabase.storage.from("recipe-images").getPublicUrl(path).data.publicUrl;
+  }
+
   const {
     title,
     description,
@@ -86,6 +142,7 @@ export async function createRecipe(formData: FormData) {
       steps: validSteps,
       tags: validTags,
       source: "user",
+      image_url: imageUrl,
     })
     .select("id")
     .single();

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { toggleFavorite } from "./actions";
 
 interface RecipeListItem {
   id: string;
@@ -8,6 +9,7 @@ interface RecipeListItem {
   description: string | null;
   tags: string[];
   source: "user" | "ai" | "seed";
+  image_url: string | null;
 }
 
 export default async function RecipesPage({
@@ -32,7 +34,7 @@ export default async function RecipesPage({
   // null (public starter recipes) — enforced by Postgres, not this code.
   let recipesQuery = supabase
     .from("recipes")
-    .select("id, title, description, tags, source")
+    .select("id, title, description, tags, source, image_url")
     .order("created_at", { ascending: false });
 
   if (query) {
@@ -42,7 +44,12 @@ export default async function RecipesPage({
     recipesQuery = recipesQuery.ilike("title", `%${query}%`);
   }
 
-  const { data: recipes, error } = await recipesQuery.returns<RecipeListItem[]>();
+  const [{ data: recipes, error }, { data: favoriteRows }] = await Promise.all([
+    recipesQuery.returns<RecipeListItem[]>(),
+    supabase.from("recipe_favorites").select("recipe_id").eq("owner_id", user.id),
+  ]);
+
+  const favoritedIds = new Set((favoriteRows ?? []).map((row) => row.recipe_id as string));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-16">
@@ -118,43 +125,79 @@ export default async function RecipesPage({
       )}
 
       <ul className="flex flex-col gap-4">
-        {recipes?.map((recipe) => (
-          <li
-            key={recipe.id}
-            className="rounded-lg border border-neutral-200 px-5 py-4"
-          >
-            <h2 className="flex items-center gap-2 text-lg font-medium text-neutral-900">
-              <Link
-                href={`/recipes/${recipe.id}`}
-                className="hover:underline"
-              >
-                {recipe.title}
-              </Link>
-              {recipe.source === "ai" && (
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">
-                  AI suggested
-                </span>
+        {recipes?.map((recipe) => {
+          const isFavorited = favoritedIds.has(recipe.id);
+          return (
+            <li
+              key={recipe.id}
+              className="rounded-lg border border-neutral-200 px-5 py-4"
+            >
+              {recipe.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element -- a
+                // handful of user-uploaded images doesn't need next/image's
+                // optimization pipeline (which also needs a configured
+                // remote pattern for the Supabase Storage host).
+                <img
+                  src={recipe.image_url}
+                  alt=""
+                  className="mb-3 h-32 w-full rounded-md object-cover"
+                />
               )}
-            </h2>
-            {recipe.description && (
-              <p className="mt-1 text-sm text-neutral-600">
-                {recipe.description}
-              </p>
-            )}
-            {recipe.tags.length > 0 && (
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {recipe.tags.map((tag) => (
-                  <li
-                    key={tag}
-                    className="rounded-full bg-basil-50 px-2.5 py-1 text-xs font-medium text-basil-700"
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="flex items-center gap-2 text-lg font-medium text-neutral-900">
+                  <Link
+                    href={`/recipes/${recipe.id}`}
+                    className="hover:underline"
                   >
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
+                    {recipe.title}
+                  </Link>
+                  {recipe.source === "ai" && (
+                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">
+                      AI suggested
+                    </span>
+                  )}
+                </h2>
+                <form action={toggleFavorite} className="flex-none">
+                  <input type="hidden" name="recipeId" value={recipe.id} />
+                  <input
+                    type="hidden"
+                    name="isFavorited"
+                    value={String(isFavorited)}
+                  />
+                  <button
+                    type="submit"
+                    aria-label={
+                      isFavorited ? "Remove from favorites" : "Add to favorites"
+                    }
+                    aria-pressed={isFavorited}
+                    className={`text-xl leading-none ${
+                      isFavorited ? "text-amber-500" : "text-neutral-300 hover:text-neutral-400"
+                    }`}
+                  >
+                    {isFavorited ? "★" : "☆"}
+                  </button>
+                </form>
+              </div>
+              {recipe.description && (
+                <p className="mt-1 text-sm text-neutral-600">
+                  {recipe.description}
+                </p>
+              )}
+              {recipe.tags.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {recipe.tags.map((tag) => (
+                    <li
+                      key={tag}
+                      className="rounded-full bg-basil-50 px-2.5 py-1 text-xs font-medium text-basil-700"
+                    >
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </main>
   );

@@ -41,7 +41,20 @@ export default async function NewRecipePage({
         </p>
       )}
 
-      <form className="flex flex-col gap-5">
+      <form className="flex flex-col gap-5" encType="multipart/form-data">
+        <label className="flex flex-col gap-1 text-sm text-neutral-700">
+          Photo
+          <input
+            name="image"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-basil-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-basil-700"
+          />
+          <span className="text-xs text-neutral-500">
+            Optional. PNG, JPEG, WebP, or GIF, up to 5MB.
+          </span>
+        </label>
+
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
           Title
           <input

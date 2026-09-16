@@ -17,7 +17,10 @@ export async function middleware(request: NextRequest) {
     // React itself sets a handful of inline style attributes — allowing
     // those (not arbitrary scripts) is a low-risk, standard tradeoff.
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' blob: data:`,
+    // Recipe photos are served from the recipe-images Storage bucket, a
+    // different origin than the app itself, so they need to be named here
+    // explicitly or the browser silently drops them under 'self' alone.
+    `img-src 'self' blob: data: ${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}`,
     `font-src 'self'`,
     // No client-side Supabase calls exist yet (everything goes through
     // server actions today), but apps/web/src/lib/supabase/client.ts is
