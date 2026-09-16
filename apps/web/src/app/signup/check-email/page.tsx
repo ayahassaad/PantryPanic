@@ -1,16 +1,21 @@
+import { Mascot } from "@/components/mascot";
+
 export default function CheckEmailPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-16 text-center">
-      <p className="mb-2 font-mono text-xs uppercase tracking-widest text-basil-600">
-        Almost there
-      </p>
-      <h1 className="mb-4 text-3xl font-semibold tracking-tight text-basil-700">
-        Check your email
-      </h1>
-      <p className="text-base text-neutral-600">
-        We sent you a confirmation link. Click it to activate your account,
-        then come back and log in.
-      </p>
+      <div className="wobble-a hand-shadow border-2 border-ink bg-cream-card p-8">
+        <Mascot className="mx-auto mb-5 h-16 w-14" />
+        <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
+          Almost there
+        </p>
+        <h1 className="mb-4 font-display text-3xl font-bold text-ink">
+          Check your email
+        </h1>
+        <p className="text-base text-ink-soft">
+          We sent you a confirmation link. Click it to activate your account,
+          then come back and log in.
+        </p>
+      </div>
     </main>
   );
 }
