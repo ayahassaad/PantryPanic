@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Mascot } from "@/components/mascot";
 import { toggleFavorite } from "../actions";
 
 interface RecipeDetail {
@@ -35,7 +36,7 @@ export default async function RecipeDetailPage({
   }
 
   // If this id doesn't exist, or RLS blocks it (someone else's private
-  // recipe), Supabase just returns no row — either way it's a 404 to
+  // recipe), Supabase just returns no row. Either way it's a 404 to
   // this user, not an error, so we don't leak which case it was.
   const { data: recipe } = await supabase
     .from("recipes")
@@ -65,15 +66,15 @@ export default async function RecipeDetailPage({
   const isFavorited = Boolean(favorite);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-16">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-8 sm:px-10">
       <Link
         href="/recipes"
-        className="mb-8 w-fit text-sm text-neutral-500 underline underline-offset-2"
+        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
       >
-        &larr; Back to recipes
+        &larr; Recipes
       </Link>
 
-      {recipe.image_url && (
+      {recipe.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element -- a handful
         // of user-uploaded images doesn't need next/image's optimization
         // pipeline (which also needs a configured remote pattern for the
@@ -81,12 +82,16 @@ export default async function RecipeDetailPage({
         <img
           src={recipe.image_url}
           alt=""
-          className="mb-6 h-56 w-full rounded-lg object-cover"
+          className="wobble-a hand-shadow mb-6 h-56 w-full border-2 border-ink object-cover"
         />
+      ) : (
+        <div className="wobble-a hand-shadow mb-6 flex h-40 items-center justify-center border-2 border-ink bg-tomato-400">
+          <Mascot className="h-20 w-[70px]" />
+        </div>
       )}
 
       <div className="mb-2 flex items-start justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight text-basil-700">
+        <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink">
           {recipe.title}
         </h1>
         <form action={toggleFavorite} className="flex-none pt-1">
@@ -96,8 +101,8 @@ export default async function RecipeDetailPage({
             type="submit"
             aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
             aria-pressed={isFavorited}
-            className={`text-2xl leading-none ${
-              isFavorited ? "text-amber-500" : "text-neutral-300 hover:text-neutral-400"
+            className={`text-3xl leading-none ${
+              isFavorited ? "text-citrus-600" : "text-ink-faint hover:text-ink-soft"
             }`}
           >
             {isFavorited ? "★" : "☆"}
@@ -106,15 +111,15 @@ export default async function RecipeDetailPage({
       </div>
 
       {recipe.description && (
-        <p className="mb-4 text-base text-neutral-600">{recipe.description}</p>
+        <p className="mb-4 text-base text-ink-soft">{recipe.description}</p>
       )}
 
       {recipe.tags.length > 0 && (
-        <ul className="mb-8 flex flex-wrap gap-2">
+        <ul className="mb-8 flex flex-wrap gap-1.5">
           {recipe.tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full bg-basil-50 px-2.5 py-1 text-xs font-medium text-basil-700"
+              className="rounded-full border-2 border-ink bg-cream-deep px-2.5 py-0.5 text-xs font-extrabold text-ink"
             >
               {tag}
             </li>
@@ -124,12 +129,13 @@ export default async function RecipeDetailPage({
 
       {ingredients && ingredients.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-lg font-medium text-neutral-900">
+          <p className="mb-3 font-display text-xs font-semibold uppercase tracking-widest text-leaf-600">
             Ingredients
-          </h2>
-          <ul className="flex flex-col gap-1.5">
+          </p>
+          <ul className="flex flex-col gap-2">
             {ingredients.map((ingredient) => (
-              <li key={ingredient.id} className="text-sm text-neutral-700">
+              <li key={ingredient.id} className="flex items-center gap-2.5 text-sm font-bold text-ink">
+                <span className="h-2 w-2 flex-none rounded-full bg-leaf-400" />
                 {[ingredient.quantity, ingredient.unit, ingredient.name]
                   .filter(Boolean)
                   .join(" ")}
@@ -140,14 +146,16 @@ export default async function RecipeDetailPage({
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-medium text-neutral-900">Steps</h2>
-        <ol className="flex flex-col gap-3">
+        <p className="mb-3 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
+          Steps
+        </p>
+        <ol className="flex flex-col gap-3.5">
           {recipe.steps.map((step, index) => (
-            <li key={index} className="flex gap-3 text-sm text-neutral-700">
-              <span className="flex-none font-medium text-basil-600">
-                {index + 1}.
+            <li key={index} className="flex gap-3 text-sm text-ink">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 border-ink bg-tomato-400 font-display text-xs font-bold text-cream">
+                {index + 1}
               </span>
-              <span>{step}</span>
+              <span className="pt-0.5">{step}</span>
             </li>
           ))}
         </ol>

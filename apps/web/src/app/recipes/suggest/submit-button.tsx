@@ -53,7 +53,7 @@ export function SubmitButton({ hasError }: { hasError: boolean }) {
           setPending(true);
         }
       }}
-      className={`mt-2 w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700 ${
+      className={`wobble-btn hand-shadow mt-2 w-fit bg-blueberry-400 px-5 py-2.5 font-display text-sm font-semibold text-cream transition hover:brightness-105 ${
         pending ? "pointer-events-none cursor-not-allowed opacity-60" : ""
       }`}
     >

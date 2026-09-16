@@ -23,6 +23,9 @@ function emptyRow(): Row {
   return { key: nextKey++, quantity: "", unit: "", name: "", category: "pantry" };
 }
 
+const FIELD_CLASSES =
+  "rounded-lg border-2 border-ink-faint bg-cream-card px-2 py-1.5 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-ink";
+
 export function IngredientRows() {
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
 
@@ -36,7 +39,7 @@ export function IngredientRows() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-2 text-xs text-neutral-500">
+      <div className="flex gap-2 text-xs font-bold text-ink-faint">
         <span className="w-16">Qty</span>
         <span className="w-20">Unit</span>
         <span className="flex-1">Ingredient</span>
@@ -52,7 +55,7 @@ export function IngredientRows() {
             onChange={(event) => updateRow(row.key, "quantity", event.target.value)}
             placeholder="2"
             name="ingredientQuantity"
-            className="w-16 rounded-md border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-basil-600"
+            className={`w-16 ${FIELD_CLASSES}`}
           />
           <input
             type="text"
@@ -60,7 +63,7 @@ export function IngredientRows() {
             onChange={(event) => updateRow(row.key, "unit", event.target.value)}
             placeholder="cups"
             name="ingredientUnit"
-            className="w-20 rounded-md border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-basil-600"
+            className={`w-20 ${FIELD_CLASSES}`}
           />
           <input
             type="text"
@@ -68,13 +71,13 @@ export function IngredientRows() {
             onChange={(event) => updateRow(row.key, "name", event.target.value)}
             placeholder="flour"
             name="ingredientName"
-            className="flex-1 rounded-md border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-basil-600"
+            className={`flex-1 ${FIELD_CLASSES}`}
           />
           <select
             value={row.category}
             onChange={(event) => updateRow(row.key, "category", event.target.value)}
             name="ingredientCategory"
-            className="w-36 rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-basil-600"
+            className={`w-36 ${FIELD_CLASSES}`}
           >
             {INGREDIENT_CATEGORIES.map((category) => (
               <option key={category} value={category}>
@@ -86,7 +89,7 @@ export function IngredientRows() {
             type="button"
             onClick={() => removeRow(row.key)}
             aria-label="Remove ingredient"
-            className="w-5 flex-none text-neutral-400 hover:text-neutral-600"
+            className="w-5 flex-none font-bold text-ink-faint hover:text-tomato-600"
           >
             &times;
           </button>
@@ -95,7 +98,7 @@ export function IngredientRows() {
       <button
         type="button"
         onClick={() => setRows((prev) => [...prev, emptyRow()])}
-        className="w-fit rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 transition hover:bg-neutral-100"
+        className="w-fit rounded-lg border-2 border-ink bg-cream-deep px-3 py-1.5 font-display text-sm font-semibold text-ink transition hover:bg-cream"
       >
         + Add ingredient
       </button>
