@@ -3,18 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --background: #F6F7F2;
-  --foreground: #1E2A22;
+  /* Matches the cream/ink tokens in tailwind.config.ts (colors.cream /
+     colors.ink) — kept as CSS vars too so the page background can be
+     set here once rather than on every page's own wrapper. */
+  --background: oklch(97% 0.018 85);
+  --foreground: oklch(24% 0.03 150);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #131C16;
-    --foreground: #E9EDE4;
+    --background: oklch(18% 0.02 150);
+    --foreground: oklch(92% 0.02 85);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+/* Hand-drawn building blocks, shared across pages as they get restyled.
+   Irregular per-corner radii and a flat offset "sticker" shadow are what
+   give cards/buttons their hand-drawn feel — not really expressible with
+   Tailwind's own border-radius/shadow scales, so they live here instead
+   of being repeated as arbitrary-value classes everywhere. */
+.wobble-a {
+  border-radius: 22px 26px 20px 28px / 26px 20px 28px 22px;
+}
+.wobble-b {
+  border-radius: 18px 22px 26px 20px / 22px 26px 18px 24px;
+}
+.wobble-btn {
+  border-radius: 16px 20px 14px 18px;
+}
+.hand-shadow {
+  box-shadow: 5px 5px 0 var(--foreground);
 }
