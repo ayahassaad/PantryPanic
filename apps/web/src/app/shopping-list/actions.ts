@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { addDays, toISODate } from "@/lib/week";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeUnit, type NormalizedUnit } from "@pantry-panic/shared";
 
 interface IngredientRow {
   recipe_id: string;
@@ -84,18 +85,32 @@ export async function generateShoppingList(formData: FormData) {
           .returns<IngredientRow[]>()
       : { data: [] as IngredientRow[] };
 
+  // Convertible units (tsp/tbsp/cup/..., g/kg/oz/lb) are bucketed by
+  // ingredient + unit *group* and summed in the group's base unit (ml or
+  // g) so "2 tbsp" from one recipe and "1 tsp" from another merge into one
+  // line. Unconvertible units (cloves, cans, "to taste", no unit at all)
+  // are still only combined on an exact string match, same as before this
+  // feature existed — see packages/shared/src/units.ts for what converts.
   interface Aggregate {
     name: string;
-    unit: string | null;
     category: string | null;
-    quantity: number | null;
+    unitGroup: NormalizedUnit["group"] | null;
+    quantityBase: number | null;
+    unitsSeen: Map<string, NormalizedUnit>; // only used when unitGroup is set
+    unit: string | null; // only used when unitGroup is null
   }
   const aggregated = new Map<string, Aggregate>();
   for (const ingredient of ingredientRows ?? []) {
     const multiplier = servingsByRecipe.get(ingredient.recipe_id) ?? 1;
-    const unitKey = (ingredient.unit ?? "").trim().toLowerCase();
-    const key = `${ingredient.name.trim().toLowerCase()}__${unitKey}`;
+    const norm = normalizeUnit(ingredient.unit);
+    const nameKey = ingredient.name.trim().toLowerCase();
+    const key = norm
+      ? `${nameKey}__group:${norm.group}`
+      : `${nameKey}__unit:${(ingredient.unit ?? "").trim().toLowerCase()}`;
+
     const scaledQuantity = ingredient.quantity != null ? ingredient.quantity * multiplier : null;
+    const contribution =
+      scaledQuantity == null ? null : norm ? scaledQuantity * norm.toBase : scaledQuantity;
 
     const existing = aggregated.get(key);
     if (existing) {
@@ -103,18 +118,42 @@ export async function generateShoppingList(formData: FormData) {
       // one doesn't, the combined line can't honestly show a total, so
       // it falls back to "just list it" (quantity: null) instead of
       // silently dropping part of the amount.
-      existing.quantity =
-        existing.quantity != null && scaledQuantity != null
-          ? existing.quantity + scaledQuantity
+      existing.quantityBase =
+        existing.quantityBase != null && contribution != null
+          ? existing.quantityBase + contribution
           : null;
+      if (norm) existing.unitsSeen.set(norm.label, norm);
     } else {
       aggregated.set(key, {
         name: ingredient.name,
-        unit: ingredient.unit,
         category: ingredient.category,
-        quantity: scaledQuantity,
+        unitGroup: norm?.group ?? null,
+        quantityBase: contribution,
+        unitsSeen: norm ? new Map([[norm.label, norm]]) : new Map(),
+        unit: ingredient.unit,
       });
     }
+  }
+
+  // Converts a merged bucket's base-unit total back into a single display
+  // unit: the largest of the units actually used for it, so an ingredient
+  // that's mostly measured in cups doesn't switch to teaspoons just
+  // because one recipe happened to use a teaspoon of it somewhere. Picking
+  // "largest of what was actually used" (rather than always the same
+  // fixed unit) keeps this order-independent — the same set of recipes
+  // always produces the same display unit, however the DB happens to
+  // return the rows, which matters so a regenerate doesn't reshuffle units
+  // and lose the "already checked" carry-over below.
+  function resolveDisplay(item: Aggregate): { quantity: number | null; unit: string | null } {
+    if (!item.unitGroup) {
+      return { quantity: item.quantityBase, unit: item.unit };
+    }
+    const candidates = [...item.unitsSeen.values()];
+    const display = candidates.reduce((largest, c) => (c.toBase > largest.toBase ? c : largest));
+    return {
+      quantity: item.quantityBase == null ? null : item.quantityBase / display.toBase,
+      unit: display.label,
+    };
   }
 
   // Regenerating shouldn't reset progress on a list someone's already
@@ -140,16 +179,20 @@ export async function generateShoppingList(formData: FormData) {
     .eq("shopping_list_id", list.id)
     .eq("is_manual", false);
 
-  const newItems = [...aggregated.entries()].map(([key, item], index) => ({
-    shopping_list_id: list.id,
-    name: item.name,
-    quantity: item.quantity,
-    unit: item.unit,
-    category: item.category,
-    is_checked: checkedByKey.get(key) ?? false,
-    is_manual: false,
-    sort_order: index,
-  }));
+  const newItems = [...aggregated.values()].map((item, index) => {
+    const { quantity, unit } = resolveDisplay(item);
+    const checkKey = `${item.name.trim().toLowerCase()}__${(unit ?? "").trim().toLowerCase()}`;
+    return {
+      shopping_list_id: list.id,
+      name: item.name,
+      quantity,
+      unit,
+      category: item.category,
+      is_checked: checkedByKey.get(checkKey) ?? false,
+      is_manual: false,
+      sort_order: index,
+    };
+  });
 
   if (newItems.length > 0) {
     await supabase.from("shopping_list_items").insert(newItems);
