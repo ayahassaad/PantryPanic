@@ -12,7 +12,7 @@ export default async function Home() {
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-16 text-center sm:items-start sm:text-left">
       <Mascot className="mb-6 h-32 w-28" />
       <h1 className="-rotate-1 mb-4 font-display text-4xl font-bold text-ink sm:text-5xl">
-        Pantry <span className="text-tomato-400">Panic</span>
+        Pantry Panic
       </h1>
       <p className="mb-8 max-w-md text-lg font-bold text-ink-soft">
         Plan a week of dinners and lunches, get an AI recipe when you
