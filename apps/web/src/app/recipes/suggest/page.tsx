@@ -73,7 +73,7 @@ export default async function SuggestRecipePage({
             <option value="">Any</option>
             {MEAL_SLOTS.map((slot) => (
               <option key={slot} value={slot}>
-                {slot[0].toUpperCase() + slot.slice(1)}
+                {slot.charAt(0).toUpperCase() + slot.slice(1)}
               </option>
             ))}
           </select>
