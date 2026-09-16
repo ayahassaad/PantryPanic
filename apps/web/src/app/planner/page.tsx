@@ -2,31 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
+import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { removeMealPlanEntry, setMealPlanEntry } from "./actions";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-function toISODate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-// Monday of the week containing `date`, in UTC so the grid doesn't shift
-// by a day depending on the server's local timezone.
-function startOfWeek(date: Date): Date {
-  const d = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  const day = d.getUTCDay(); // 0 = Sunday
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  return d;
-}
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
 
 interface PlannerEntry {
   id: string;
@@ -56,11 +35,7 @@ export default async function PlannerPage({
   }
 
   const { week } = await searchParams;
-  const anchor =
-    week && /^\d{4}-\d{2}-\d{2}$/.test(week)
-      ? new Date(`${week}T00:00:00Z`)
-      : new Date();
-  const weekStart = startOfWeek(anchor);
+  const weekStart = resolveWeekStart(week);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekStartISO = toISODate(weekStart);
   const weekEndISO = toISODate(weekDays[6]);
@@ -134,6 +109,12 @@ export default async function PlannerPage({
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 transition hover:bg-neutral-100"
           >
             Next &rarr;
+          </Link>
+          <Link
+            href={`/shopping-list?week=${weekStartISO}`}
+            className="rounded-md bg-basil-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-basil-700"
+          >
+            Shopping list
           </Link>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  INGREDIENT_CATEGORIES,
   RecipeSuggestionSchema,
   type RecipeSuggestion,
   type RecipeSuggestionInput,
@@ -26,16 +27,31 @@ const SUGGEST_RECIPE_TOOL: Anthropic.Tool = {
         type: "string",
         description: "One or two sentence description of the dish.",
       },
-      usesFromPantry: {
+      ingredients: {
         type: "array",
-        items: { type: "string" },
-        description: "Which of the user's supplied ingredients this recipe uses.",
-      },
-      additionalIngredients: {
-        type: "array",
-        items: { type: "string" },
         description:
-          "Ingredients the recipe needs that were NOT in the user's pantry list. Empty array if none.",
+          "Every ingredient the recipe needs — both from the user's pantry list and anything extra.",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "e.g. \"garlic\", not \"2 cloves garlic\"." },
+            quantity: {
+              type: "number",
+              description:
+                "A countable/measurable amount, e.g. 2 for \"2 cloves garlic\". Omit entirely for things like \"salt to taste\" that don't have one.",
+            },
+            unit: {
+              type: "string",
+              description: "e.g. \"cloves\", \"cups\", \"g\". Omit if quantity is omitted.",
+            },
+            category: {
+              type: "string",
+              enum: [...INGREDIENT_CATEGORIES],
+              description: "Which grocery aisle this ingredient belongs in.",
+            },
+          },
+          required: ["name", "category"],
+        },
       },
       steps: {
         type: "array",
@@ -43,7 +59,7 @@ const SUGGEST_RECIPE_TOOL: Anthropic.Tool = {
         description: "Ordered cooking steps.",
       },
     },
-    required: ["title", "description", "usesFromPantry", "additionalIngredients", "steps"],
+    required: ["title", "description", "ingredients", "steps"],
   },
 };
 
@@ -56,7 +72,9 @@ function buildPrompt(input: RecipeSuggestionInput): string {
     "Suggest one recipe that makes the best use of the pantry ingredients above.",
     "It's fine to call for a small number of additional common ingredients " +
       "(salt, oil, spices, etc.) if needed, but prefer recipes that lean on " +
-      "what's already on hand. Call the suggest_recipe tool with the result.",
+      "what's already on hand. Give each ingredient its own quantity, unit, " +
+      "and grocery-aisle category so it can be combined into a shopping " +
+      "list later. Call the suggest_recipe tool with the result.",
   ];
   return lines.filter((line) => line !== null).join("\n");
 }

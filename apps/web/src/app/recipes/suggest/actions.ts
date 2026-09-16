@@ -125,12 +125,14 @@ export async function suggestRecipe(formData: FormData) {
     );
   }
 
-  const allIngredients = [...recipe.usesFromPantry, ...recipe.additionalIngredients];
-  if (allIngredients.length > 0) {
+  if (recipe.ingredients.length > 0) {
     const { error: ingredientsError } = await supabase.from("recipe_ingredients").insert(
-      allIngredients.map((name, index) => ({
+      recipe.ingredients.map((ingredient, index) => ({
         recipe_id: saved.id,
-        name,
+        name: ingredient.name,
+        quantity: ingredient.quantity ?? null,
+        unit: ingredient.unit ?? null,
+        category: ingredient.category,
         sort_order: index,
       })),
     );

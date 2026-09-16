@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import type { MealSlot } from "./types";
+import { RecipeIngredientSchema } from "./ingredient";
 
 // Deliberately the same three values meal_plan_entries.meal_slot allows
 // (see supabase/migrations) — recipe suggestions stay in that vocabulary
@@ -26,11 +27,18 @@ export const RecipeSuggestionInputSchema = z.object({
 });
 export type RecipeSuggestionInput = z.infer<typeof RecipeSuggestionInputSchema>;
 
+// One flat, structured ingredient list — each entry carries its own
+// quantity/unit/category, whether it's something from the pantry list
+// the user typed in or extra the recipe needs. This is also exactly the
+// shape recipe_ingredients rows need, so it maps straight into the
+// database with no reshaping (previously this was two plain string
+// arrays — usesFromPantry/additionalIngredients — but nothing downstream
+// ever used that split once the recipe was saved, so it's gone now in
+// favor of the structure the shopping list actually needs).
 export const RecipeSuggestionSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
-  usesFromPantry: z.array(z.string()),
-  additionalIngredients: z.array(z.string()),
+  ingredients: z.array(RecipeIngredientSchema).min(1),
   steps: z.array(z.string()).min(1),
 });
 export type RecipeSuggestion = z.infer<typeof RecipeSuggestionSchema>;

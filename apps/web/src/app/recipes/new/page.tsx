@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createRecipe } from "./actions";
+import { IngredientRows } from "./ingredient-rows";
 
 export default async function NewRecipePage({
   searchParams,
@@ -85,18 +86,14 @@ export default async function NewRecipePage({
           <span className="text-xs text-neutral-500">Comma-separated.</span>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm text-neutral-700">
-          Ingredients
-          <textarea
-            name="ingredients"
-            rows={6}
-            placeholder={"200g pasta\n2 cloves garlic\n1 can chopped tomatoes"}
-            className="rounded-md border border-neutral-300 px-3 py-2 text-base outline-none focus:border-basil-600"
-          />
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-neutral-700">Ingredients</span>
+          <IngredientRows />
           <span className="text-xs text-neutral-500">
-            One ingredient per line.
+            Quantity and unit are optional — leave blank for things like
+            &quot;salt to taste&quot;.
           </span>
-        </label>
+        </div>
 
         <label className="flex flex-col gap-1 text-sm text-neutral-700">
           Steps

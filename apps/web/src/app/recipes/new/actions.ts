@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { RecipeIngredientSchema } from "@pantry-panic/shared";
 import { createClient } from "@/lib/supabase/server";
 
 // These caps aren't about the "shape" of the data — a comma/newline
@@ -16,8 +17,9 @@ const NewRecipeSchema = z.object({
     .array(z.string().trim().min(1).max(1000))
     .min(1, "Add at least one step.")
     .max(100),
-  ingredients: z.array(z.string().trim().min(1).max(200)).max(100),
 });
+
+const IngredientsSchema = z.array(RecipeIngredientSchema).max(100);
 
 // Mirrors the recipe-images Storage bucket's own file_size_limit and
 // allowed_mime_types (see the 20260916120000 migration) — checking here
@@ -45,7 +47,6 @@ export async function createRecipe(formData: FormData) {
   const descriptionRaw = (formData.get("description") as string) ?? "";
   const tagsRaw = (formData.get("tags") as string) ?? "";
   const stepsRaw = (formData.get("steps") as string) ?? "";
-  const ingredientsRaw = (formData.get("ingredients") as string) ?? "";
   const imageFile = formData.get("image");
 
   const tags = tagsRaw
@@ -58,23 +59,54 @@ export async function createRecipe(formData: FormData) {
     .map((step) => step.trim())
     .filter(Boolean);
 
-  const ingredients = ingredientsRaw
-    .split("\n")
-    .map((ingredient) => ingredient.trim())
-    .filter(Boolean);
-
   const parsed = NewRecipeSchema.safeParse({
     title: titleRaw,
     description: descriptionRaw || undefined,
     tags,
     steps,
-    ingredients,
   });
 
   if (!parsed.success) {
     redirect(
       `/recipes/new?error=${encodeURIComponent(
         parsed.error.issues[0]?.message ?? "Check what you entered and try again.",
+      )}`,
+    );
+  }
+
+  // The ingredient-rows client component submits four parallel arrays
+  // (same field name repeated once per row) — getAll() on each comes back
+  // in row order, so zipping them back together by index reconstructs
+  // each row exactly as it was on screen.
+  const ingredientNames = formData.getAll("ingredientName") as string[];
+  const ingredientQuantities = formData.getAll("ingredientQuantity") as string[];
+  const ingredientUnits = formData.getAll("ingredientUnit") as string[];
+  const ingredientCategories = formData.getAll("ingredientCategory") as string[];
+
+  const ingredientCandidates = ingredientNames
+    .map((name, index) => ({
+      name: name?.trim() ?? "",
+      quantityRaw: ingredientQuantities[index]?.trim() ?? "",
+      unit: ingredientUnits[index]?.trim() || undefined,
+      category: ingredientCategories[index],
+    }))
+    // A row with no name typed in yet (including the form's starting
+    // empty row) just gets dropped rather than rejected.
+    .filter((row) => row.name.length > 0);
+
+  const ingredientsParsed = IngredientsSchema.safeParse(
+    ingredientCandidates.map((row) => ({
+      name: row.name,
+      quantity: row.quantityRaw ? Number(row.quantityRaw) : undefined,
+      unit: row.unit,
+      category: row.category,
+    })),
+  );
+
+  if (!ingredientsParsed.success) {
+    redirect(
+      `/recipes/new?error=${encodeURIComponent(
+        "One of the ingredient rows doesn't look right — check the quantity is a number.",
       )}`,
     );
   }
@@ -122,13 +154,8 @@ export async function createRecipe(formData: FormData) {
     imageUrl = supabase.storage.from("recipe-images").getPublicUrl(path).data.publicUrl;
   }
 
-  const {
-    title,
-    description,
-    tags: validTags,
-    steps: validSteps,
-    ingredients: validIngredients,
-  } = parsed.data;
+  const { title, description, tags: validTags, steps: validSteps } = parsed.data;
+  const validIngredients = ingredientsParsed.data;
 
   // owner_id is set explicitly to this user — the RLS "insert" policy on
   // recipes only allows a row where owner_id = auth.uid(), so this can't
@@ -156,15 +183,16 @@ export async function createRecipe(formData: FormData) {
   }
 
   if (validIngredients.length > 0) {
-    const { error: ingredientsError } = await supabase
-      .from("recipe_ingredients")
-      .insert(
-        validIngredients.map((name, index) => ({
-          recipe_id: recipe.id,
-          name,
-          sort_order: index,
-        })),
-      );
+    const { error: ingredientsError } = await supabase.from("recipe_ingredients").insert(
+      validIngredients.map((ingredient, index) => ({
+        recipe_id: recipe.id,
+        name: ingredient.name,
+        quantity: ingredient.quantity ?? null,
+        unit: ingredient.unit ?? null,
+        category: ingredient.category,
+        sort_order: index,
+      })),
+    );
 
     if (ingredientsError) {
       redirect(
