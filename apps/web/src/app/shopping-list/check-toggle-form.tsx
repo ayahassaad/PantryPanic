@@ -26,7 +26,7 @@ export function CheckToggleForm({
         type="checkbox"
         defaultChecked={isChecked}
         aria-label={`Mark ${label} as ${isChecked ? "not bought" : "bought"}`}
-        className="h-4 w-4 flex-none rounded border-neutral-300 text-basil-600 focus:ring-basil-600"
+        className="h-5 w-5 flex-none cursor-pointer rounded-md border-2 border-ink accent-leaf-400"
       />
     </form>
   );
