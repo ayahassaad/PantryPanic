@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { Mascot } from "@/components/mascot";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -8,36 +9,35 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-16">
-      <p className="mb-3 font-mono text-xs uppercase tracking-widest text-basil-600">
-        Day 3: accounts
-      </p>
-      <h1 className="mb-4 text-4xl font-semibold tracking-tight text-basil-700">
-        Pantry Panic
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-16 text-center sm:items-start sm:text-left">
+      <Mascot className="mb-6 h-32 w-28" />
+      <h1 className="-rotate-1 mb-4 font-display text-4xl font-bold text-ink sm:text-5xl">
+        Pantry <span className="text-tomato-400">Panic</span>
       </h1>
-      <p className="mb-8 max-w-md text-base text-neutral-600">
-        Plan a week of dinners and lunches, get an AI recipe when you don&apos;t
-        know what to make, and turn it all into one shopping list.
+      <p className="mb-8 max-w-md text-lg font-bold text-ink-soft">
+        Plan a week of dinners and lunches, get an AI recipe when you
+        don&apos;t know what to make, and turn it all into one shopping
+        list.
       </p>
 
       {user ? (
         <Link
           href="/dashboard"
-          className="w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
+          className="wobble-btn hand-shadow w-fit bg-tomato-400 px-6 py-3 font-display text-base font-semibold text-cream transition hover:brightness-105"
         >
           Go to your dashboard
         </Link>
       ) : (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           <Link
             href="/signup"
-            className="w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
+            className="wobble-btn hand-shadow w-fit bg-tomato-400 px-6 py-3 font-display text-base font-semibold text-cream transition hover:brightness-105"
           >
             Sign up
           </Link>
           <Link
             href="/login"
-            className="text-sm font-medium text-basil-600 underline underline-offset-2"
+            className="border-b-2 border-dashed border-ink text-base font-bold text-ink transition hover:text-tomato-600"
           >
             Log in
           </Link>
