@@ -5,16 +5,15 @@
 :root {
   /* Matches the cream/ink tokens in tailwind.config.ts (colors.cream /
      colors.ink) — kept as CSS vars too so the page background can be
-     set here once rather than on every page's own wrapper. */
+     set here once rather than on every page's own wrapper.
+
+     No prefers-color-scheme: dark variant on purpose — this hand-drawn
+     look is designed as a light, cream-background brand identity, not
+     a light/dark pair, so it should look the same regardless of the
+     visitor's system theme until a dark mode is deliberately designed
+     for it. */
   --background: oklch(97% 0.018 85);
   --foreground: oklch(24% 0.03 150);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(18% 0.02 150);
-    --foreground: oklch(92% 0.02 85);
-  }
 }
 
 body {
