@@ -38,7 +38,7 @@ export default async function PlannerPage({
   const weekStart = resolveWeekStart(week);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekStartISO = toISODate(weekStart);
-  const weekEndISO = toISODate(weekDays[6]);
+  const weekEndISO = toISODate(addDays(weekStart, 6));
   const prevWeekISO = toISODate(addDays(weekStart, -7));
   const nextWeekISO = toISODate(addDays(weekStart, 7));
   const todayISO = toISODate(new Date());
