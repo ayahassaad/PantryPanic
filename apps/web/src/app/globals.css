@@ -38,3 +38,21 @@ body {
 .hand-shadow {
   box-shadow: 5px 5px 0 var(--foreground);
 }
+/* Colored variants, used where a card/button sits on the plain cream
+   background and a colored offset shadow reads better than an ink one
+   (recipe cards cycling through the accent palette, etc). */
+.hand-shadow-tomato {
+  box-shadow: 5px 5px 0 oklch(62% 0.19 25);
+}
+.hand-shadow-citrus {
+  box-shadow: 5px 5px 0 oklch(80% 0.15 95);
+}
+.hand-shadow-leaf {
+  box-shadow: 5px 5px 0 oklch(62% 0.13 145);
+}
+.hand-shadow-carrot {
+  box-shadow: 5px 5px 0 oklch(68% 0.17 55);
+}
+.hand-shadow-blueberry {
+  box-shadow: 5px 5px 0 oklch(65% 0.13 290);
+}
