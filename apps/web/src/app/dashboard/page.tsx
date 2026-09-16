@@ -22,15 +22,21 @@ export default async function DashboardPage() {
         Welcome, {user.email}
       </h1>
       <p className="mb-8 max-w-md text-base text-neutral-600">
-        This is where your meal plan and shopping list will live. We&apos;re
-        building those next.
+        Plan your week of dinners and lunches, then turn it into one
+        shopping list.
       </p>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Link
           href="/recipes"
           className="w-fit rounded-md bg-basil-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-basil-700"
         >
           Browse recipes
+        </Link>
+        <Link
+          href="/planner"
+          className="w-fit rounded-md border border-basil-600 px-4 py-2 text-sm font-medium text-basil-700 transition hover:bg-basil-50"
+        >
+          Meal planner
         </Link>
         <Link
           href="/profile"
