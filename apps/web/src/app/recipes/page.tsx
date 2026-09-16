@@ -10,7 +10,11 @@ interface RecipeListItem {
   source: "user" | "ai" | "seed";
 }
 
-export default async function RecipesPage() {
+export default async function RecipesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,14 +24,25 @@ export default async function RecipesPage() {
     redirect("/login");
   }
 
+  const { q } = await searchParams;
+  const query = q?.trim() ?? "";
+
   // RLS does the real filtering here: this query only ever returns rows
   // where recipes.owner_id = auth.uid() (this user's own) or owner_id is
   // null (public starter recipes) — enforced by Postgres, not this code.
-  const { data: recipes, error } = await supabase
+  let recipesQuery = supabase
     .from("recipes")
     .select("id, title, description, tags, source")
-    .order("created_at", { ascending: false })
-    .returns<RecipeListItem[]>();
+    .order("created_at", { ascending: false });
+
+  if (query) {
+    // A plain parameterized ilike, not PostgREST's .or() string DSL — so
+    // there's nothing a search term could contain (a comma, a paren)
+    // that would break or reshape the filter itself.
+    recipesQuery = recipesQuery.ilike("title", `%${query}%`);
+  }
+
+  const { data: recipes, error } = await recipesQuery.returns<RecipeListItem[]>();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-16">
@@ -63,6 +78,33 @@ export default async function RecipesPage() {
         </div>
       </div>
 
+      {/* Plain GET form — no client JS needed. Submitting just navigates
+          to /recipes?q=..., which this Server Component re-renders with
+          the filtered results. */}
+      <form className="mb-6 flex gap-2">
+        <input
+          type="text"
+          name="q"
+          defaultValue={query}
+          placeholder="Search recipes by name"
+          className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-base outline-none focus:border-basil-600"
+        />
+        <button
+          type="submit"
+          className="w-fit rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+        >
+          Search
+        </button>
+        {query && (
+          <Link
+            href="/recipes"
+            className="flex w-fit items-center px-2 text-sm text-neutral-500 underline underline-offset-2"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
+
       {error && (
         <p className="mb-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
           Couldn&apos;t load recipes: {error.message}
@@ -70,7 +112,9 @@ export default async function RecipesPage() {
       )}
 
       {!error && recipes && recipes.length === 0 && (
-        <p className="text-neutral-600">No recipes yet.</p>
+        <p className="text-neutral-600">
+          {query ? `No recipes match "${query}".` : "No recipes yet."}
+        </p>
       )}
 
       <ul className="flex flex-col gap-4">
