@@ -161,7 +161,7 @@ export default async function ShoppingListPage({
 
       {!list && (
         <p className="text-neutral-600">
-          No shopping list yet for this week — generate one above once
+          No shopping list yet for this week. Generate one above once
           you&apos;ve{" "}
           <Link href={`/planner?week=${weekStartISO}`} className="underline">
             planned some meals
@@ -172,7 +172,7 @@ export default async function ShoppingListPage({
 
       {list && (!items || items.length === 0) && (
         <p className="text-neutral-600">
-          Nothing here yet — plan some meals for this week and regenerate,
+          Nothing here yet. Plan some meals for this week and regenerate,
           or add your own items above.
         </p>
       )}

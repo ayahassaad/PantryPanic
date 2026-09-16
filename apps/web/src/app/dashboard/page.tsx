@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             You&apos;re in
           </p>
           <h1 className="-rotate-[0.5deg] font-display text-3xl font-bold leading-tight text-ink sm:text-5xl">
-            Hey {firstName} — what&apos;s cooking this week?
+            Hey {firstName}, what&apos;s cooking this week?
           </h1>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-soft sm:mx-0 sm:text-lg">
             Plan your dinners, wrangle a shopping list, and never stand in

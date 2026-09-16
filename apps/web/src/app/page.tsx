@@ -10,7 +10,7 @@ export default async function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-16">
       <p className="mb-3 font-mono text-xs uppercase tracking-widest text-basil-600">
-        Day 3 — accounts
+        Day 3: accounts
       </p>
       <h1 className="mb-4 text-4xl font-semibold tracking-tight text-basil-700">
         Pantry Panic

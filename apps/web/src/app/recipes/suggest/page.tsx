@@ -38,7 +38,7 @@ export default async function SuggestRecipePage({
       </h1>
       <p className="mb-8 max-w-md text-base text-neutral-600">
         List what you have on hand and we&apos;ll suggest a recipe. It&apos;s
-        saved to your recipe library once it&apos;s ready — this can take a
+        saved to your recipe library once it&apos;s ready. This can take a
         few seconds.
       </p>
 
@@ -73,7 +73,7 @@ export default async function SuggestRecipePage({
             <option value="">Any</option>
             {MEAL_SLOTS.map((slot) => (
               <option key={slot} value={slot}>
-                {slot.charAt(0).toUpperCase() + slot.slice(1)}
+                {slot[0].toUpperCase() + slot.slice(1)}
               </option>
             ))}
           </select>

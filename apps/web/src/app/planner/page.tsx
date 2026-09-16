@@ -135,7 +135,7 @@ export default async function PlannerPage({
 
       {!hasRecipes && (
         <p className="wobble-btn mb-6 border-2 border-ink bg-citrus-50 px-4 py-3 text-sm font-bold text-ink">
-          You don&apos;t have any recipes yet —{" "}
+          You don&apos;t have any recipes yet, so{" "}
           <Link href="/recipes/new" className="underline">
             add one
           </Link>{" "}
@@ -266,7 +266,7 @@ export default async function PlannerPage({
       <div className="mt-8 flex max-w-xl items-center gap-4 rounded-2xl bg-cream-deep px-5 py-4">
         <Mascot className="h-[50px] w-[46px] flex-none" />
         <p className="text-sm font-bold text-ink">
-          Weekends still empty? No panic — the shopping list only pulls what&apos;s
+          Weekends still empty? No panic: the shopping list only pulls what&apos;s
           actually planned.
         </p>
       </div>

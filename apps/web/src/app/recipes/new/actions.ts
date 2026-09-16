@@ -106,7 +106,7 @@ export async function createRecipe(formData: FormData) {
   if (!ingredientsParsed.success) {
     redirect(
       `/recipes/new?error=${encodeURIComponent(
-        "One of the ingredient rows doesn't look right — check the quantity is a number.",
+        "One of the ingredient rows doesn't look right. Check the quantity is a number.",
       )}`,
     );
   }
@@ -117,7 +117,7 @@ export async function createRecipe(formData: FormData) {
     if (imageFile.size > MAX_IMAGE_BYTES) {
       redirect(
         `/recipes/new?error=${encodeURIComponent(
-          "That image is too large — 5MB max.",
+          "That image is too large (5MB max).",
         )}`,
       );
     }

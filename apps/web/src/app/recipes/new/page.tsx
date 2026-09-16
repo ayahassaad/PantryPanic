@@ -90,7 +90,7 @@ export default async function NewRecipePage({
           <span className="text-sm text-neutral-700">Ingredients</span>
           <IngredientRows />
           <span className="text-xs text-neutral-500">
-            Quantity and unit are optional — leave blank for things like
+            Quantity and unit are optional. Leave blank for things like
             &quot;salt to taste&quot;.
           </span>
         </div>

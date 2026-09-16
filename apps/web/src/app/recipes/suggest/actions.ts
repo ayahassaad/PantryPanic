@@ -91,7 +91,7 @@ export async function suggestRecipe(formData: FormData) {
     console.error("[recipes/suggest] generateRecipeSuggestion failed:", error);
     const message =
       error instanceof MissingApiKeyError
-        ? "Recipe suggestions aren't set up yet — ask whoever runs this app to add an Anthropic API key."
+        ? "Recipe suggestions aren't set up yet. Ask whoever runs this app to add an Anthropic API key."
         : error instanceof RecipeSuggestionUpstreamError
           ? error.message
           : "Couldn't get a suggestion. Try again.";

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
   return NextResponse.redirect(
     `${origin}/login?error=${encodeURIComponent(
-      "That confirmation link didn't work — try logging in, or sign up again.",
+      "That confirmation link didn't work. Try logging in, or sign up again.",
     )}`,
   );
 }
