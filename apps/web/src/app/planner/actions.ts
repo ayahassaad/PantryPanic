@@ -68,7 +68,10 @@ export async function setMealPlanEntry(formData: FormData) {
   revalidatePath("/planner");
 }
 
-export async function removeMealPlanEntry(formData: FormData) {
+// Called directly from PlannerCell (not as a <form action>), so it takes
+// a plain argument instead of FormData — same reasoning as the recipe
+// favorites toggle.
+export async function removeMealPlanEntry(entryId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -78,7 +81,6 @@ export async function removeMealPlanEntry(formData: FormData) {
     redirect("/login");
   }
 
-  const entryId = formData.get("entryId") as string | null;
   if (!entryId) {
     return;
   }

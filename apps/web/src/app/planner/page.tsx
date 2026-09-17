@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
-import { removeMealPlanEntry, setMealPlanEntry } from "./actions";
+import { PlannerCell } from "./planner-cell";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -183,79 +183,25 @@ export default async function PlannerPage({
                 const entry = entryByCell.get(`${dateISO}_${slot}`);
 
                 return (
-                  <div
+                  <PlannerCell
                     key={`${slot}-${dateISO}`}
-                    className={
+                    dateISO={dateISO}
+                    slot={slot}
+                    initialEntry={
                       entry
-                        ? `flex min-h-[92px] flex-col justify-between rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${slotStyle.cell}`
-                        : "flex min-h-[92px] items-center justify-center rounded-xl border-2 border-dashed border-ink-faint p-2"
+                        ? {
+                            id: entry.id,
+                            recipeId: entry.recipe?.id ?? null,
+                            recipeTitle: entry.recipe?.title ?? null,
+                            servings: entry.servings,
+                          }
+                        : null
                     }
-                  >
-                    {entry ? (
-                      <div className={`flex h-full flex-col justify-between gap-1 ${slotStyle.text}`}>
-                        <div>
-                          {entry.recipe ? (
-                            <Link
-                              href={`/recipes/${entry.recipe.id}`}
-                              className="font-display text-xs font-semibold hover:underline"
-                            >
-                              {entry.recipe.title}
-                            </Link>
-                          ) : (
-                            <span className="text-xs" style={{ opacity: 0.75 }}>
-                              Recipe removed
-                            </span>
-                          )}
-                          {entry.servings > 1 && (
-                            <p className="text-[10px]" style={{ opacity: 0.8 }}>
-                              {entry.servings} servings
-                            </p>
-                          )}
-                        </div>
-                        <form action={removeMealPlanEntry}>
-                          <input type="hidden" name="entryId" value={entry.id} />
-                          <button
-                            type="submit"
-                            className="text-[10px] font-bold underline"
-                            style={{ opacity: 0.8 }}
-                          >
-                            &times; remove
-                          </button>
-                        </form>
-                      </div>
-                    ) : hasRecipes ? (
-                      <form
-                        action={setMealPlanEntry}
-                        className="flex h-full w-full flex-col justify-center gap-1"
-                      >
-                        <input type="hidden" name="planDate" value={dateISO} />
-                        <input type="hidden" name="mealSlot" value={slot} />
-                        <select
-                          name="recipeId"
-                          required
-                          defaultValue=""
-                          className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1 py-1 text-[11px] text-ink outline-none focus:border-ink"
-                        >
-                          <option value="" disabled>
-                            + Add
-                          </option>
-                          {recipes?.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.title}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="submit"
-                          className="rounded-lg border-2 border-ink bg-cream-deep px-1 py-0.5 font-display text-[10px] font-semibold text-ink transition hover:bg-cream"
-                        >
-                          Set
-                        </button>
-                      </form>
-                    ) : (
-                      <span className="text-2xl text-ink-faint">+</span>
-                    )}
-                  </div>
+                    recipes={recipes ?? []}
+                    hasRecipes={hasRecipes}
+                    cellClass={slotStyle.cell}
+                    textClass={slotStyle.text}
+                  />
                 );
               }),
             ];

@@ -8,8 +8,8 @@ import {
 } from "@pantry-panic/shared";
 import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
-import { addManualItem, generateShoppingList, removeItem } from "./actions";
-import { CheckToggleForm } from "./check-toggle-form";
+import { addManualItem, generateShoppingList } from "./actions";
+import { ShoppingListItemRow } from "./check-toggle-form";
 
 interface ShoppingListItem {
   id: string;
@@ -212,42 +212,16 @@ export default async function ShoppingListPage({
                 {INGREDIENT_CATEGORY_LABELS[category as IngredientCategory] ?? category}
               </p>
               <ul className="flex flex-col gap-2">
-                {itemsByCategory.get(category)?.map((item) => {
-                  const amount = formatAmount(item);
-                  return (
-                    <li
-                      key={item.id}
-                      className="flex items-center gap-3 rounded-xl border-2 border-ink bg-cream-card px-3.5 py-2.5"
-                    >
-                      <CheckToggleForm
-                        itemId={item.id}
-                        isChecked={item.is_checked}
-                        label={item.name}
-                      />
-                      <span
-                        className={`flex-1 text-sm font-bold ${
-                          item.is_checked ? "text-ink-faint line-through" : "text-ink"
-                        }`}
-                      >
-                        {[amount, item.name].filter(Boolean).join(" ")}
-                        {item.is_manual && (
-                          <span className="ml-2 rounded-full bg-cream-deep px-2 py-0.5 text-[11px] font-extrabold text-ink-soft">
-                            added by you
-                          </span>
-                        )}
-                      </span>
-                      <form action={removeItem}>
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <button
-                          type="submit"
-                          className="text-xs font-bold text-ink-faint underline hover:text-ink-soft"
-                        >
-                          Remove
-                        </button>
-                      </form>
-                    </li>
-                  );
-                })}
+                {itemsByCategory.get(category)?.map((item) => (
+                  <ShoppingListItemRow
+                    key={item.id}
+                    itemId={item.id}
+                    name={item.name}
+                    amount={formatAmount(item)}
+                    isManual={item.is_manual}
+                    initialChecked={item.is_checked}
+                  />
+                ))}
               </ul>
             </section>
           );

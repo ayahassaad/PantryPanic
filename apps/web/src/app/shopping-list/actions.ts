@@ -237,7 +237,10 @@ export async function addManualItem(formData: FormData) {
   revalidatePath("/shopping-list");
 }
 
-export async function toggleItemChecked(formData: FormData) {
+// Called directly from ShoppingListItemRow (not as a <form action>), so
+// it takes plain arguments instead of FormData — same reasoning as the
+// recipe favorites toggle.
+export async function toggleItemChecked(itemId: string, currentlyChecked: boolean) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -247,8 +250,6 @@ export async function toggleItemChecked(formData: FormData) {
     redirect("/login");
   }
 
-  const itemId = formData.get("itemId") as string | null;
-  const currentlyChecked = formData.get("isChecked") === "true";
   if (!itemId) {
     return;
   }
@@ -261,7 +262,7 @@ export async function toggleItemChecked(formData: FormData) {
   revalidatePath("/shopping-list");
 }
 
-export async function removeItem(formData: FormData) {
+export async function removeItem(itemId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -271,7 +272,6 @@ export async function removeItem(formData: FormData) {
     redirect("/login");
   }
 
-  const itemId = formData.get("itemId") as string | null;
   if (!itemId) {
     return;
   }
