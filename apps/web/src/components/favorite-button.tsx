@@ -24,6 +24,11 @@ interface FavoriteButtonProps {
   initialFavorited: boolean;
   toggleFavorite: (recipeId: string, wasFavorited: boolean) => Promise<void>;
   size?: keyof typeof SIZE_CLASSES;
+  // Fires the instant the visible star flips (and again if a failed save
+  // has to flip it back) — lets a parent list (e.g. the Favorites tab)
+  // keep its own copy of "which recipes are favorited" in sync without
+  // waiting on a server round trip either.
+  onToggle?: (recipeId: string, isFavorited: boolean) => void;
 }
 
 // Flips the star the instant you click it, rather than waiting on the
@@ -35,6 +40,7 @@ export function FavoriteButton({
   initialFavorited,
   toggleFavorite,
   size = "sm",
+  onToggle,
 }: FavoriteButtonProps) {
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [, startTransition] = useTransition();
@@ -42,6 +48,7 @@ export function FavoriteButton({
   function handleClick() {
     const wasFavorited = isFavorited;
     setIsFavorited(!wasFavorited);
+    onToggle?.(recipeId, !wasFavorited);
 
     startTransition(async () => {
       try {
@@ -53,6 +60,7 @@ export function FavoriteButton({
         // The server call failed — put the star back rather than leave
         // the UI claiming something that didn't actually save.
         setIsFavorited(wasFavorited);
+        onToggle?.(recipeId, wasFavorited);
       }
     });
   }
