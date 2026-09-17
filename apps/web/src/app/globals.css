@@ -56,3 +56,24 @@ body {
 .hand-shadow-blueberry {
   box-shadow: 5px 5px 0 oklch(65% 0.13 290);
 }
+
+/* A small idle rotation for the mascot on quieter pages (login, etc.) —
+   just enough to feel alive without being distracting. Respects
+   prefers-reduced-motion since it's purely decorative. */
+.mascot-wiggle {
+  animation: mascot-wiggle 4s ease-in-out infinite;
+}
+@keyframes mascot-wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-wiggle {
+    animation: none;
+  }
+}
