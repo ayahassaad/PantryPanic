@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Mascot } from "@/components/mascot";
 import {
@@ -13,33 +14,102 @@ import {
 } from "@/components/food-doodles";
 import { login } from "./actions";
 
-// Where each doodle sits, at what size, and from what breakpoint up it
-// shows. Two tiny ones (index 0-1) are visible everywhere, tucked into
-// corners far enough from the centered card to never collide with it;
-// the rest layer in as there's more room (sm, then md, then lg), which
-// is also what keeps a phone screen from feeling cluttered while a wide
-// desktop gets the full "doodles all over" effect.
-const DOODLE_PLACEMENTS: { Shape: (props: { className?: string }) => JSX.Element; className: string }[] = [
-  { Shape: DoodleCitrusSlice, className: "absolute left-3 top-3 h-6 w-6" },
-  { Shape: DoodleLeafSprig, className: "absolute bottom-3 right-3 h-6 w-6" },
+type DoodleShape = (props: { className?: string; style?: CSSProperties }) => JSX.Element;
 
-  { Shape: DoodleCarrot, className: "hidden sm:block absolute left-[10%] top-10 h-9 w-9 -rotate-6" },
-  { Shape: DoodleBroccoli, className: "hidden sm:block absolute right-[8%] top-14 h-9 w-9 rotate-3" },
-  { Shape: DoodleGrapes, className: "hidden sm:block absolute left-[8%] bottom-16 h-8 w-8 rotate-6" },
-  { Shape: DoodleMug, className: "hidden sm:block absolute right-[10%] bottom-12 h-9 w-9 -rotate-3" },
-  { Shape: DoodleEgg, className: "hidden sm:block absolute left-[4%] top-1/4 h-7 w-7 rotate-12" },
-  { Shape: DoodleCheeseWedge, className: "hidden sm:block absolute right-[4%] bottom-1/4 h-8 w-8 -rotate-6" },
+interface DoodlePlacement {
+  Shape: DoodleShape;
+  tierClass: string;
+  sizeClass: string;
+  style: CSSProperties;
+}
 
-  { Shape: DoodleCitrusSlice, className: "hidden md:block absolute right-[14%] top-1/3 h-6 w-6 rotate-12 opacity-90" },
-  { Shape: DoodleCarrot, className: "hidden md:block absolute left-[14%] bottom-1/3 h-7 w-7 rotate-12 opacity-90" },
-  { Shape: DoodleLeafSprig, className: "hidden md:block absolute right-[20%] top-[6%] h-6 w-6 -rotate-12" },
-  { Shape: DoodlePepper, className: "hidden md:block absolute left-[3%] top-[45%] h-8 w-8 rotate-6" },
-  { Shape: DoodleMug, className: "hidden md:block absolute right-[3%] top-[55%] h-7 w-7 rotate-6" },
+const SHAPES: DoodleShape[] = [
+  DoodleCarrot,
+  DoodleCitrusSlice,
+  DoodleBroccoli,
+  DoodleEgg,
+  DoodlePepper,
+  DoodleGrapes,
+  DoodleMug,
+  DoodleLeafSprig,
+  DoodleCheeseWedge,
+];
 
-  { Shape: DoodleBroccoli, className: "hidden lg:block absolute left-[22%] top-[15%] h-7 w-7 -rotate-6 opacity-80" },
-  { Shape: DoodleGrapes, className: "hidden lg:block absolute right-[22%] bottom-[15%] h-7 w-7 rotate-12 opacity-80" },
-  { Shape: DoodleEgg, className: "hidden lg:block absolute left-[18%] top-[60%] h-6 w-6 -rotate-12 opacity-80" },
-  { Shape: DoodleCheeseWedge, className: "hidden lg:block absolute right-[18%] bottom-[55%] h-6 w-6 rotate-6 opacity-80" },
+const SIZE_CLASSES = ["h-6 w-6", "h-7 w-7", "h-8 w-8", "h-9 w-9"];
+
+// A tiny deterministic "random" generator — not Math.random(). This page
+// is server-rendered, and a value that came out different between the
+// server's render and the browser's hydration pass would throw a
+// hydration-mismatch error. Same seed always gives the same number, so
+// the scatter is stable across reloads but still looks organic rather
+// than gridded.
+function pseudoRandom(seed: number): number {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// Scatters `count` doodles in a band that hugs one edge of the page —
+// "top"/"bottom" run along the full width near that edge, "left"/"right"
+// run along the full height near that edge. `depthRange` is how far
+// into the page that band reaches, as a percent of the page. Because
+// the login card is always centered, keeping every doodle inside an
+// edge band guarantees it can never land on top of the card — no
+// overlap-checking needed.
+function scatterBand(
+  band: "top" | "bottom" | "left" | "right",
+  count: number,
+  tierClass: string,
+  depthRange: [number, number],
+  seedOffset: number,
+): DoodlePlacement[] {
+  const placements: DoodlePlacement[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const seed = seedOffset + i * 13.37;
+    const along = 2 + pseudoRandom(seed) * 96;
+    const depth = depthRange[0] + pseudoRandom(seed + 1) * (depthRange[1] - depthRange[0]);
+    const rotate = Math.round(pseudoRandom(seed + 2) * 30 - 15);
+    const shape = SHAPES[Math.floor(pseudoRandom(seed + 3) * SHAPES.length)] ?? DoodleCarrot;
+    const sizeClass = SIZE_CLASSES[Math.floor(pseudoRandom(seed + 4) * SIZE_CLASSES.length)] ?? "h-7 w-7";
+    const opacity = pseudoRandom(seed + 5) > 0.75 ? 0.8 : 1;
+
+    const style: CSSProperties = { transform: `rotate(${rotate}deg)`, opacity };
+    if (band === "top") {
+      style.top = `${depth}%`;
+      style.left = `${along}%`;
+    } else if (band === "bottom") {
+      style.bottom = `${depth}%`;
+      style.left = `${along}%`;
+    } else if (band === "left") {
+      style.left = `${depth}%`;
+      style.top = `${along}%`;
+    } else {
+      style.right = `${depth}%`;
+      style.top = `${along}%`;
+    }
+
+    placements.push({ Shape: shape, tierClass, sizeClass, style });
+  }
+
+  return placements;
+}
+
+// About 3x the original scatter: a handful of tiny always-visible ones
+// right at the corners, a fuller edge on tablet and up, and an extra,
+// deeper layer once there's enough width that it truly can't reach the
+// card. Each `scatterBand` call is one "layer" — tune the counts here to
+// make the page busier or calmer.
+const DOODLE_PLACEMENTS: DoodlePlacement[] = [
+  ...scatterBand("top", 2, "", [1, 4], 1),
+  ...scatterBand("bottom", 2, "", [1, 4], 100),
+
+  ...scatterBand("top", 9, "hidden sm:block", [3, 16], 200),
+  ...scatterBand("bottom", 9, "hidden sm:block", [3, 16], 300),
+  ...scatterBand("left", 9, "hidden sm:block", [1, 18], 400),
+  ...scatterBand("right", 9, "hidden sm:block", [1, 18], 500),
+
+  ...scatterBand("left", 8, "hidden lg:block", [18, 30], 600),
+  ...scatterBand("right", 8, "hidden lg:block", [18, 30], 700),
 ];
 
 // Rotates by day of week so the page has a little personality without
@@ -67,10 +137,15 @@ export default async function LoginPage({
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
       {/* Decorative food doodles, scattered around the card. Each is a
-          shape from food-doodles.tsx; DOODLE_PLACEMENTS above just says
-          where, how big, and from which breakpoint up it appears. */}
-      {DOODLE_PLACEMENTS.map(({ Shape, className }, index) => (
-        <Shape key={index} className={`pointer-events-none ${className}`} />
+          shape from food-doodles.tsx; DOODLE_PLACEMENTS above says where
+          (as an edge band, so it can't overlap the card), how big, and
+          from which breakpoint up it appears. */}
+      {DOODLE_PLACEMENTS.map(({ Shape, tierClass, sizeClass, style }, index) => (
+        <Shape
+          key={index}
+          className={`pointer-events-none absolute ${tierClass} ${sizeClass}`}
+          style={style}
+        />
       ))}
 
       <div className="w-full max-w-sm">
