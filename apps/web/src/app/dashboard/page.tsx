@@ -43,9 +43,6 @@ export default async function DashboardPage() {
       <div className="mb-10 flex flex-col items-center gap-6 text-center sm:mb-14 sm:flex-row sm:items-center sm:gap-10 sm:text-left">
         <Mascot className="h-40 w-36 flex-none" />
         <div>
-          <p className="mb-2 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
-            You&apos;re in
-          </p>
           <h1 className="-rotate-[0.5deg] font-display text-3xl font-bold leading-tight text-ink sm:text-5xl">
             Hey {firstName}, what&apos;s cooking this week?
           </h1>
@@ -60,7 +57,7 @@ export default async function DashboardPage() {
       <div className="grid gap-5 sm:grid-cols-3">
         <Link
           href="/recipes"
-          className="wobble-a hand-shadow -rotate-1 bg-tomato-400 p-6 transition hover:brightness-105"
+          className="wobble-a hand-shadow -rotate-1 bg-tomato-400 p-6 transition duration-150 hover:-translate-x-1 hover:-translate-y-1 hover:rotate-0 hover:brightness-105 active:translate-x-0 active:translate-y-0"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <path
@@ -86,7 +83,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/planner"
-          className="wobble-b hand-shadow rotate-1 bg-leaf-400 p-6 transition hover:brightness-105"
+          className="wobble-b hand-shadow rotate-1 bg-leaf-400 p-6 transition duration-150 hover:-translate-x-1 hover:-translate-y-1 hover:rotate-0 hover:brightness-105 active:translate-x-0 active:translate-y-0"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <rect x="4" y="6" width="26" height="24" rx="3" fill="none" stroke="oklch(99% 0.006 85)" strokeWidth="2.5" />
@@ -106,7 +103,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/profile"
-          className="wobble-a hand-shadow -rotate-[0.6deg] bg-citrus-400 p-6 transition hover:brightness-105"
+          className="wobble-a hand-shadow -rotate-[0.6deg] bg-citrus-400 p-6 transition duration-150 hover:-translate-x-1 hover:-translate-y-1 hover:rotate-0 hover:brightness-105 active:translate-x-0 active:translate-y-0"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <circle cx="17" cy="11" r="6" fill="none" stroke="oklch(24% 0.03 150)" strokeWidth="2.5" />
