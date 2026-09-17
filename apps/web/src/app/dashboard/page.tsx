@@ -28,11 +28,7 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8 sm:px-10">
       {/* top bar */}
-      <div className="mb-10 flex items-center justify-between sm:mb-14">
-        <div className="flex items-center gap-2">
-          <Mascot className="h-9 w-8" />
-          <span className="font-display text-xl font-bold text-ink">Pantry Panic</span>
-        </div>
+      <div className="mb-10 flex items-center justify-end sm:mb-14">
         <form>
           <button
             formAction={logout}
