@@ -79,16 +79,18 @@ body {
 }
 
 /* Recipe card hover: small doodles drift down the card like they're
-   raining. Paused by default and only started on .group:hover (rather
-   than gating with opacity) so the animation genuinely isn't running,
-   and costing nothing, on any of the cards you aren't pointed at. */
+   raining. The animation only exists at all while .group:hover applies
+   (rather than always running but just paused) — that way the moment
+   you stop hovering, the doodle snaps straight back to its unanimated
+   base state (opacity: 0) and disappears immediately, instead of
+   freezing wherever it happened to be mid-fall. It also means every new
+   hover starts the fall fresh from the top rather than resuming
+   part-way through. */
 .card-doodle-fall {
-  animation: card-doodle-fall 2.6s linear infinite;
-  animation-play-state: paused;
   opacity: 0;
 }
 .group:hover .card-doodle-fall {
-  animation-play-state: running;
+  animation: card-doodle-fall 2.6s linear infinite;
 }
 @keyframes card-doodle-fall {
   0% {
