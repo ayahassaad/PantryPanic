@@ -51,10 +51,10 @@ function pseudoRandom(seed: number): number {
 // Scatters `count` doodles in a band that hugs one edge of the page —
 // "top"/"bottom" run along the full width near that edge, "left"/"right"
 // run along the full height near that edge. `depthRange` is how far
-// into the page that band reaches, as a percent of the page. Because
-// the login card is always centered, keeping every doodle inside an
-// edge band guarantees it can never land on top of the card — no
-// overlap-checking needed.
+// into the page that band reaches, as a percent of the page — kept
+// small enough (see the callers below) that the band never reaches the
+// centered card or the "New here?" line under it, on any real browser
+// window, so there's no overlap-checking to do.
 function scatterBand(
   band: "top" | "bottom" | "left" | "right",
   count: number,
@@ -63,10 +63,17 @@ function scatterBand(
   seedOffset: number,
 ): DoodlePlacement[] {
   const placements: DoodlePlacement[] = [];
+  // The along-axis (98% usable, from 2% to 98%) is divided into one
+  // slot per doodle, and each one is jittered a bit within its own
+  // slot. Picking a fully random spot for all `count` of them tends to
+  // clump a few together and leave gaps elsewhere — evenly-spaced slots
+  // with a little jitter still look organic but guarantee spacing.
+  const slotWidth = 96 / count;
 
   for (let i = 0; i < count; i++) {
     const seed = seedOffset + i * 13.37;
-    const along = 2 + pseudoRandom(seed) * 96;
+    const jitter = (pseudoRandom(seed) - 0.5) * slotWidth * 0.7;
+    const along = 2 + slotWidth * (i + 0.5) + jitter;
     const depth = depthRange[0] + pseudoRandom(seed + 1) * (depthRange[1] - depthRange[0]);
     const rotate = Math.round(pseudoRandom(seed + 2) * 30 - 15);
     const shape = SHAPES[Math.floor(pseudoRandom(seed + 3) * SHAPES.length)] ?? DoodleCarrot;
@@ -94,22 +101,33 @@ function scatterBand(
   return placements;
 }
 
-// About 3x the original scatter: a handful of tiny always-visible ones
-// right at the corners, a fuller edge on tablet and up, and an extra,
-// deeper layer once there's enough width that it truly can't reach the
-// card. Each `scatterBand` call is one "layer" — tune the counts here to
-// make the page busier or calmer.
+// About 3x the original scatter, laid out in layers that only turn on
+// once there's real room for them:
+//
+// - top/bottom depth stays under ~9% of the viewport height even at the
+//   widest layer, which stays clear of the card + the "New here?" line
+//   below it even on a short laptop window (~700px tall, where the card
+//   and footer together eat up most of the middle ~550px, leaving only
+//   ~75px = ~10.7% above and below).
+// - left/right bands don't turn on until `md:` (768px) rather than
+//   `sm:` (640px) — at 640px wide, the card's own 384px width leaves so
+//   little side margin that even a small depth would touch it; 768px+
+//   gives enough breathing room, and the `lg:` layer sits deeper still.
+//
+// Each `scatterBand` call is one layer — tune the counts/ranges here to
+// make the page busier, calmer, or adjust the safe margins.
 const DOODLE_PLACEMENTS: DoodlePlacement[] = [
-  ...scatterBand("top", 2, "", [1, 4], 1),
-  ...scatterBand("bottom", 2, "", [1, 4], 100),
+  ...scatterBand("top", 3, "", [1, 4], 1),
+  ...scatterBand("bottom", 3, "", [1, 4], 100),
 
-  ...scatterBand("top", 9, "hidden sm:block", [3, 16], 200),
-  ...scatterBand("bottom", 9, "hidden sm:block", [3, 16], 300),
-  ...scatterBand("left", 9, "hidden sm:block", [1, 18], 400),
-  ...scatterBand("right", 9, "hidden sm:block", [1, 18], 500),
+  ...scatterBand("top", 8, "hidden sm:block", [3, 9], 200),
+  ...scatterBand("bottom", 8, "hidden sm:block", [3, 9], 300),
 
-  ...scatterBand("left", 8, "hidden lg:block", [18, 30], 600),
-  ...scatterBand("right", 8, "hidden lg:block", [18, 30], 700),
+  ...scatterBand("left", 8, "hidden md:block", [1, 14], 400),
+  ...scatterBand("right", 8, "hidden md:block", [1, 14], 500),
+
+  ...scatterBand("left", 8, "hidden lg:block", [14, 24], 600),
+  ...scatterBand("right", 8, "hidden lg:block", [14, 24], 700),
 ];
 
 // Rotates by day of week so the page has a little personality without
