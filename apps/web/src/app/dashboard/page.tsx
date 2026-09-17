@@ -57,7 +57,7 @@ export default async function DashboardPage() {
       <div className="grid gap-5 sm:grid-cols-3">
         <Link
           href="/recipes"
-          className="wobble-a hand-shadow -rotate-1 bg-tomato-400 p-6 transition duration-150 hover:-translate-x-1 hover:-translate-y-1 hover:rotate-0 hover:brightness-105 active:translate-x-0 active:translate-y-0"
+          className="wobble-a hand-shadow relative -rotate-1 bg-tomato-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <path
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/planner"
-          className="wobble-b hand-shadow rotate-1 bg-leaf-400 p-6 transition duration-150 hover:-translate-x-1 hover:-translate-y-1 hover:rotate-0 hover:brightness-105 active:translate-x-0 active:translate-y-0"
+          className="wobble-b hand-shadow relative rotate-1 bg-leaf-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <rect x="4" y="6" width="26" height="24" rx="3" fill="none" stroke="oklch(99% 0.006 85)" strokeWidth="2.5" />
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/profile"
-          className="wobble-a hand-shadow -rotate-[0.6deg] bg-citrus-400 p-6 transition duration-150 hover:-translate-x-1 hover:-translate-y-1 hover:rotate-0 hover:brightness-105 active:translate-x-0 active:translate-y-0"
+          className="wobble-a hand-shadow relative -rotate-[0.6deg] bg-citrus-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <circle cx="17" cy="11" r="6" fill="none" stroke="oklch(24% 0.03 150)" strokeWidth="2.5" />
