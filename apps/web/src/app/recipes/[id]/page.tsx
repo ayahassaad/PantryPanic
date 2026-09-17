@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Mascot } from "@/components/mascot";
-import { toggleFavorite } from "../actions";
+import { FavoriteButton } from "@/components/favorite-button";
+import { toggleFavorite, deleteRecipe } from "../actions";
+import { DeleteRecipeButton } from "./delete-recipe-button";
 
 interface RecipeDetail {
   id: string;
@@ -11,6 +13,7 @@ interface RecipeDetail {
   tags: string[];
   steps: string[];
   image_url: string | null;
+  owner_id: string | null;
 }
 
 interface RecipeIngredientRow {
@@ -22,10 +25,13 @@ interface RecipeIngredientRow {
 
 export default async function RecipeDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const { error: deleteError } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -40,7 +46,7 @@ export default async function RecipeDetailPage({
   // this user, not an error, so we don't leak which case it was.
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id, title, description, tags, steps, image_url")
+    .select("id, title, description, tags, steps, image_url, owner_id")
     .eq("id", id)
     .maybeSingle<RecipeDetail>();
 
@@ -64,6 +70,10 @@ export default async function RecipeDetailPage({
   ]);
 
   const isFavorited = Boolean(favorite);
+  // Starter/seed recipes have owner_id null and aren't anyone's to edit
+  // or delete — only a recipe this user actually created (by hand or via
+  // AI suggestion) shows those controls.
+  const isOwner = recipe.owner_id === user.id;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-8 sm:px-10">
@@ -90,25 +100,35 @@ export default async function RecipeDetailPage({
         </div>
       )}
 
+      {deleteError && (
+        <p className="wobble-btn mb-6 border-2 border-ink bg-tomato-50 px-4 py-3 text-sm font-bold text-tomato-700">
+          {deleteError}
+        </p>
+      )}
+
       <div className="mb-2 flex items-start justify-between gap-4">
         <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink">
           {recipe.title}
         </h1>
-        <form action={toggleFavorite} className="flex-none pt-1">
-          <input type="hidden" name="recipeId" value={recipe.id} />
-          <input type="hidden" name="isFavorited" value={String(isFavorited)} />
-          <button
-            type="submit"
-            aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
-            aria-pressed={isFavorited}
-            className={`text-3xl leading-none ${
-              isFavorited ? "text-citrus-600" : "text-ink-faint hover:text-ink-soft"
-            }`}
-          >
-            {isFavorited ? "★" : "☆"}
-          </button>
-        </form>
+        <FavoriteButton
+          recipeId={recipe.id}
+          initialFavorited={isFavorited}
+          toggleFavorite={toggleFavorite}
+          size="lg"
+        />
       </div>
+
+      {isOwner && (
+        <div className="mb-4 flex items-center gap-4">
+          <Link
+            href={`/recipes/${recipe.id}/edit`}
+            className="border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
+          >
+            Edit
+          </Link>
+          <DeleteRecipeButton recipeId={recipe.id} deleteRecipe={deleteRecipe} />
+        </div>
+      )}
 
       {recipe.description && (
         <p className="mb-4 text-base text-ink-soft">{recipe.description}</p>

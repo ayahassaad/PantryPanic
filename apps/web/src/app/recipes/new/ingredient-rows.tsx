@@ -23,11 +23,25 @@ function emptyRow(): Row {
   return { key: nextKey++, quantity: "", unit: "", name: "", category: "pantry" };
 }
 
+export interface IngredientRowInput {
+  quantity: string;
+  unit: string;
+  name: string;
+  category: string;
+}
+
 const FIELD_CLASSES =
   "rounded-lg border-2 border-ink-faint bg-cream-card px-2 py-1.5 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-ink";
 
-export function IngredientRows() {
-  const [rows, setRows] = useState<Row[]>([emptyRow()]);
+export function IngredientRows({ initialRows }: { initialRows?: IngredientRowInput[] }) {
+  // On the edit form this comes pre-filled with the recipe's existing
+  // ingredients; on "new" it's left undefined and starts as one blank
+  // row, same as before.
+  const [rows, setRows] = useState<Row[]>(() =>
+    initialRows && initialRows.length > 0
+      ? initialRows.map((row) => ({ key: nextKey++, ...row }))
+      : [emptyRow()],
+  );
 
   function updateRow(key: number, field: keyof Omit<Row, "key">, value: string) {
     setRows((prev) => prev.map((row) => (row.key === key ? { ...row, [field]: value } : row)));

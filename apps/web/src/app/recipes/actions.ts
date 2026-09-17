@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function toggleFavorite(formData: FormData) {
+// Called directly from the FavoriteButton client component (not as a
+// <form action>), so it takes plain arguments instead of FormData — that
+// works fine for a server action as long as the arguments are
+// serializable, which a string and a boolean always are.
+export async function toggleFavorite(recipeId: string, wasFavorited: boolean) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,14 +18,11 @@ export async function toggleFavorite(formData: FormData) {
     redirect("/login");
   }
 
-  const recipeId = formData.get("recipeId") as string | null;
-  const isFavorited = formData.get("isFavorited") === "true";
-
   if (!recipeId) {
     return;
   }
 
-  if (isFavorited) {
+  if (wasFavorited) {
     await supabase
       .from("recipe_favorites")
       .delete()
@@ -51,7 +52,36 @@ export async function toggleFavorite(formData: FormData) {
 
   // Re-renders whichever page the toggle happened on with fresh data —
   // no redirect, since we want to land back exactly where we were,
-  // including any ?q= search still in the URL.
+  // including any ?q= search or ?tab= still in the URL.
   revalidatePath("/recipes");
   revalidatePath(`/recipes/${recipeId}`);
+}
+
+// Only ever removes a recipe this user owns — RLS enforces owner_id =
+// auth.uid() on delete too, so the .eq() below is a belt-and-suspenders
+// check, not the actual security boundary.
+export async function deleteRecipe(recipeId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase
+    .from("recipes")
+    .delete()
+    .eq("id", recipeId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    redirect(
+      `/recipes/${recipeId}?error=${encodeURIComponent("Couldn't delete that recipe.")}`,
+    );
+  }
+
+  revalidatePath("/recipes");
+  redirect("/recipes");
 }
