@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Mascot } from "@/components/mascot";
 import { FavoriteButton } from "@/components/favorite-button";
@@ -15,7 +15,7 @@ import {
   DoodleMug,
   DoodlePepper,
 } from "@/components/food-doodles";
-import { toggleFavorite } from "./actions";
+import { deleteRecipeCard, toggleFavorite } from "./actions";
 
 export interface RecipeListItem {
   id: string;
@@ -24,6 +24,27 @@ export interface RecipeListItem {
   tags: string[];
   source: "user" | "ai" | "seed";
   image_url: string | null;
+  // True for a recipe this user created themselves — by hand, or via the
+  // AI suggester (both set owner_id to the creator). False for the
+  // built-in starter/seed recipes, which have no owner and aren't
+  // anyone's to edit or delete. Computed server-side in page.tsx so the
+  // client never needs to see raw owner_id values.
+  isOwner: boolean;
+}
+
+// A Next.js redirect() (e.g. "not logged in any more") works by throwing
+// a special error with a digest starting "NEXT_REDIRECT" — Next's own
+// runtime catches that to perform the navigation. If the catch block
+// below swallowed it like a normal error, the redirect would silently
+// never happen, so it's explicitly let through instead.
+function isRedirectError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
 }
 
 // Cycled by card index rather than randomized — random per-render would
@@ -121,6 +142,11 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(
     () => new Set(initialFavoritedIds),
   );
+  // Recipes deleted from a card, tracked here rather than removed from
+  // `recipes` directly — same reasoning as favoritedIds: React state, not
+  // a mutation of the prop array.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [, startTransition] = useTransition();
 
   function handleToggle(recipeId: string, isFavorited: boolean) {
     setFavoritedIds((prev) => {
@@ -134,11 +160,44 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
     });
   }
 
+  function handleDelete(recipeId: string) {
+    if (!window.confirm("Delete this recipe? This can't be undone.")) {
+      return;
+    }
+
+    setDeletedIds((prev) => new Set(prev).add(recipeId));
+
+    startTransition(async () => {
+      try {
+        const result = await deleteRecipeCard(recipeId);
+        if (result.error) {
+          // Couldn't actually delete it — put the card back rather than
+          // leave the grid quietly wrong.
+          setDeletedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(recipeId);
+            return next;
+          });
+        }
+      } catch (error) {
+        if (isRedirectError(error)) {
+          throw error;
+        }
+        setDeletedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(recipeId);
+          return next;
+        });
+      }
+    });
+  }
+
   // A recipe you favorite still shows up in "All" — favoriting just also
   // puts a copy of it under "Favorites", it never moves it out of the
   // main list.
-  const displayedRecipes =
-    tab === "favorites" ? recipes.filter((recipe) => favoritedIds.has(recipe.id)) : recipes;
+  const displayedRecipes = (
+    tab === "favorites" ? recipes.filter((recipe) => favoritedIds.has(recipe.id)) : recipes
+  ).filter((recipe) => !deletedIds.has(recipe.id));
 
   return (
     <>
@@ -242,6 +301,23 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
                     size="sm"
                   />
                 </div>
+                {recipe.isOwner && (
+                  <div className="mt-1 flex items-center gap-3">
+                    <Link
+                      href={`/recipes/${recipe.id}/edit`}
+                      className="text-xs font-bold text-ink-soft underline underline-offset-2 transition hover:text-ink"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(recipe.id)}
+                      className="text-xs font-bold text-ink-faint underline underline-offset-2 transition hover:text-tomato-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
                 {recipe.description && (
                   <p className="mt-1 text-sm text-ink-soft">{recipe.description}</p>
                 )}

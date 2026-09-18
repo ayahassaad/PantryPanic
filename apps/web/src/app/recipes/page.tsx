@@ -4,6 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { Mascot } from "@/components/mascot";
 import { RecipeGrid, type RecipeListItem } from "./recipe-grid";
 
+// The raw shape this page's query returns — everything RecipeListItem
+// has except isOwner (which doesn't exist as a column; it's derived
+// below from owner_id, which the client never needs to see directly).
+type RecipeRow = Omit<RecipeListItem, "isOwner"> & { owner_id: string | null };
+
 function buildHref(params: { q?: string; tab?: string }): string {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
@@ -33,9 +38,11 @@ export default async function RecipesPage({
   // RLS does the real filtering here: this query only ever returns rows
   // where recipes.owner_id = auth.uid() (this user's own) or owner_id is
   // null (public starter recipes) — enforced by Postgres, not this code.
+  // owner_id itself is only fetched to compute isOwner below — it's never
+  // passed down to the client as-is.
   let recipesQuery = supabase
     .from("recipes")
-    .select("id, title, description, tags, source, image_url")
+    .select("id, title, description, tags, source, image_url, owner_id")
     .order("created_at", { ascending: false });
 
   if (query) {
@@ -45,10 +52,20 @@ export default async function RecipesPage({
     recipesQuery = recipesQuery.ilike("title", `%${query}%`);
   }
 
-  const [{ data: recipes, error }, { data: favoriteRows }] = await Promise.all([
-    recipesQuery.returns<RecipeListItem[]>(),
+  const [{ data: recipeRows, error }, { data: favoriteRows }] = await Promise.all([
+    recipesQuery.returns<RecipeRow[]>(),
     supabase.from("recipe_favorites").select("recipe_id").eq("owner_id", user.id),
   ]);
+
+  // Edit/delete on a card only make sense for a recipe this user actually
+  // created themselves (by hand or via the AI suggester) — starter/seed
+  // recipes have owner_id null and aren't anyone's to change.
+  const recipes: RecipeListItem[] = (recipeRows ?? []).map(
+    ({ owner_id, ...recipe }) => ({
+      ...recipe,
+      isOwner: owner_id === user.id,
+    }),
+  );
 
   const favoritedIds = (favoriteRows ?? []).map((row) => row.recipe_id as string);
 
@@ -124,7 +141,7 @@ export default async function RecipesPage({
           a full round trip back to the server. */}
       {!error && (
         <RecipeGrid
-          recipes={recipes ?? []}
+          recipes={recipes}
           favoritedIds={favoritedIds}
           query={query}
           initialTab={initialTab}

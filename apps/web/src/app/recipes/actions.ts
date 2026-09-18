@@ -60,7 +60,14 @@ export async function toggleFavorite(recipeId: string, wasFavorited: boolean) {
 // Only ever removes a recipe this user owns — RLS enforces owner_id =
 // auth.uid() on delete too, so the .eq() below is a belt-and-suspenders
 // check, not the actual security boundary.
-export async function deleteRecipe(recipeId: string) {
+//
+// Returns a result instead of redirecting, so it works both called from
+// a recipe card on the grid (where deleting should just make that card
+// disappear in place — no navigation makes sense, we're already on the
+// right page) and from deleteRecipe below (the detail page, where a
+// redirect is the right call: once the recipe you were looking at is
+// gone there's nothing left on that page to show).
+export async function deleteRecipeCard(recipeId: string): Promise<{ error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -77,11 +84,22 @@ export async function deleteRecipe(recipeId: string) {
     .eq("owner_id", user.id);
 
   if (error) {
-    redirect(
-      `/recipes/${recipeId}?error=${encodeURIComponent("Couldn't delete that recipe.")}`,
-    );
+    return { error: "Couldn't delete that recipe." };
   }
 
   revalidatePath("/recipes");
+  return {};
+}
+
+// Called from the detail page's DeleteRecipeButton, which relies on
+// always getting a redirect() — that's what lets it tell "the delete
+// actually failed" apart from "we're successfully navigating away".
+export async function deleteRecipe(recipeId: string) {
+  const { error } = await deleteRecipeCard(recipeId);
+
+  if (error) {
+    redirect(`/recipes/${recipeId}?error=${encodeURIComponent(error)}`);
+  }
+
   redirect("/recipes");
 }
