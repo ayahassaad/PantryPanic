@@ -68,6 +68,18 @@ function buildPrompt(input: RecipeSuggestionInput): string {
     `Pantry ingredients on hand: ${input.ingredients.join(", ")}.`,
     input.mealSlot ? `Meal: ${input.mealSlot}.` : null,
     input.constraints ? `Constraints: ${input.constraints}.` : null,
+    input.dietaryPreferences?.length
+      ? `Dietary preferences: ${input.dietaryPreferences.join(", ")}.`
+      : null,
+    // Phrased as its own hard, capitalized requirement rather than folded
+    // into the preferences line above — an allergy is a safety issue, not
+    // a taste preference, and shouldn't read like one to the model.
+    input.allergies?.length
+      ? `MUST NOT include any of the following allergens, in any form: ${input.allergies.join(", ")}. This is a hard requirement, not a preference.`
+      : null,
+    input.unitSystem === "metric"
+      ? "Give ingredient quantities in metric units (g, kg, ml, l) rather than US customary units."
+      : null,
     "",
     "Suggest one recipe that makes the best use of the pantry ingredients above.",
     "It's fine to call for a small number of additional common ingredients " +

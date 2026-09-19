@@ -34,10 +34,30 @@ export async function suggestRecipe(formData: FormData) {
   const mealSlotRaw = (formData.get("mealSlot") as string) ?? "";
   const constraintsRaw = ((formData.get("constraints") as string) ?? "").trim();
 
+  // Pull dietary preferences, allergies, and unit system from the
+  // profile — not typed on this form, but this is exactly the feature
+  // the profile page promises ("these help tailor recipe suggestions to
+  // what you can actually eat"), so every suggestion should honor them
+  // without the user having to repeat themselves in the constraints box.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("dietary_preferences, allergies, unit_system")
+    .eq("id", user.id)
+    .maybeSingle<{
+      dietary_preferences: string[];
+      allergies: string[];
+      unit_system: "metric" | "imperial";
+    }>();
+
   const parsed = RecipeSuggestionInputSchema.safeParse({
     ingredients,
     mealSlot: mealSlotRaw || undefined,
     constraints: constraintsRaw || undefined,
+    dietaryPreferences: profile?.dietary_preferences?.length
+      ? profile.dietary_preferences
+      : undefined,
+    allergies: profile?.allergies?.length ? profile.allergies : undefined,
+    unitSystem: profile?.unit_system,
   });
 
   if (!parsed.success) {
