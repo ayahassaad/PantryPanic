@@ -147,9 +147,9 @@ const TAGLINES = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notice?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, notice } = await searchParams;
   const tagline = TAGLINES[new Date().getDay() % TAGLINES.length] ?? "Welcome back";
 
   return (
@@ -179,6 +179,12 @@ export default async function LoginPage({
           {error && (
             <p className="wobble-btn mb-6 border-2 border-ink bg-tomato-50 px-4 py-3 text-sm font-bold text-tomato-700">
               {error}
+            </p>
+          )}
+
+          {notice && !error && (
+            <p className="wobble-btn mb-6 border-2 border-ink bg-leaf-50 px-4 py-3 text-sm font-bold text-leaf-700">
+              {notice}
             </p>
           )}
 
