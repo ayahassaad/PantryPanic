@@ -51,6 +51,16 @@ export async function setMealPlanEntry(formData: FormData) {
     return;
   }
 
+  // Servings defaults to the household size from the profile (2 if never
+  // set) rather than always 1 — there's no servings input on the "Set"
+  // form itself, so this is the only place that value comes from.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_size")
+    .eq("id", user.id)
+    .maybeSingle<{ household_size: number }>();
+  const servings = profile?.household_size ?? 2;
+
   // Upsert on the (user_id, plan_date, meal_slot) unique constraint —
   // setting a new recipe on an already-filled slot replaces it instead
   // of erroring.
@@ -60,7 +70,7 @@ export async function setMealPlanEntry(formData: FormData) {
       recipe_id: recipeId,
       plan_date: planDate,
       meal_slot: mealSlot,
-      servings: 1,
+      servings,
     },
     { onConflict: "user_id,plan_date,meal_slot" },
   );
