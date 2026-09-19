@@ -22,8 +22,20 @@ export const RecipeSuggestionInputSchema = z.object({
     .min(1, "List at least one ingredient.")
     .max(40, "That's a lot of ingredients — try narrowing it down."),
   mealSlot: z.enum(MEAL_SLOTS).optional(),
-  // Free-text dietary restrictions, time limits, "kid-friendly", etc.
+  // Free-text dietary restrictions, time limits, "kid-friendly", etc. —
+  // typed fresh on the suggest form itself, on top of whatever's saved to
+  // the profile below.
   constraints: z.string().trim().max(300).optional(),
+  // Pulled from the user's profile (not typed on this form) — kept as
+  // their own fields rather than folded into `constraints` so allergies
+  // in particular can be phrased to the model as a hard exclusion, not
+  // just another preference in a paragraph of free text.
+  dietaryPreferences: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
+  allergies: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
+  // Matches the UnitSystem union in units.ts — spelled out here (rather
+  // than imported) so this schema, which is the runtime source of truth
+  // for the type below, doesn't take on a dependency for one string enum.
+  unitSystem: z.enum(["metric", "imperial"]).optional(),
 });
 export type RecipeSuggestionInput = z.infer<typeof RecipeSuggestionInputSchema>;
 
