@@ -82,46 +82,53 @@ export function PlannerCell({
     });
   }
 
+  // Fixed height (not min-height) so a filled cell is exactly the same
+  // size as an empty "+ Add" one — a long recipe title used to push the
+  // box taller than its neighbors and throw off the whole row. The title
+  // is clamped to 3 lines instead, and the box itself is now the link to
+  // the recipe (tap/click anywhere on it for the full details and
+  // instructions) with just a small "x" in the corner to remove it.
   if (entry) {
     return (
       <div
-        className={`flex min-h-[92px] flex-col justify-between rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass}`}
+        className={`relative h-[92px] overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass}`}
       >
-        <div className={`flex h-full flex-col justify-between gap-1 ${textClass}`}>
-          <div>
-            {entry.recipeId ? (
-              <Link
-                href={`/recipes/${entry.recipeId}`}
-                className="font-display text-xs font-semibold hover:underline"
-              >
-                {entry.recipeTitle}
-              </Link>
-            ) : (
-              <span className="text-xs" style={{ opacity: 0.75 }}>
-                Recipe removed
+        {entry.recipeId ? (
+          <Link
+            href={`/recipes/${entry.recipeId}`}
+            className={`flex h-full flex-col justify-center gap-1 pr-5 transition hover:brightness-110 ${textClass}`}
+          >
+            <span className="line-clamp-3 font-display text-xs font-semibold leading-snug">
+              {entry.recipeTitle}
+            </span>
+            {entry.servings > 1 && (
+              <span className="text-[10px]" style={{ opacity: 0.8 }}>
+                {entry.servings} servings
               </span>
             )}
-            {entry.servings > 1 && (
-              <p className="text-[10px]" style={{ opacity: 0.8 }}>
-                {entry.servings} servings
-              </p>
-            )}
+          </Link>
+        ) : (
+          <div className={`flex h-full flex-col justify-center pr-5 ${textClass}`}>
+            <span className="text-xs" style={{ opacity: 0.75 }}>
+              Recipe removed
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="text-left text-[10px] font-bold underline"
-            style={{ opacity: 0.8 }}
-          >
-            &times; remove
-          </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={handleRemove}
+          aria-label="Remove this meal"
+          className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-sm font-bold leading-none transition hover:bg-black/10 ${textClass}`}
+          style={{ opacity: 0.75 }}
+        >
+          &times;
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-[92px] items-center justify-center rounded-xl border-2 border-dashed border-ink-faint p-2">
+    <div className="flex h-[92px] items-center justify-center rounded-xl border-2 border-dashed border-ink-faint p-2">
       {hasRecipes ? (
         <form action={setMealPlanEntry} className="flex h-full w-full flex-col justify-center gap-1">
           <input type="hidden" name="planDate" value={dateISO} />
