@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
-import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
+import { addDays, getISOWeekNumber, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
 import { PlannerCell } from "./planner-cell";
 
@@ -50,6 +50,7 @@ export default async function PlannerPage({
 
   const { week } = await searchParams;
   const weekStart = resolveWeekStart(week);
+  const weekNumber = getISOWeekNumber(weekStart);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekStartISO = toISODate(weekStart);
   const weekEndISO = toISODate(addDays(weekStart, 6));
@@ -97,12 +98,7 @@ export default async function PlannerPage({
             Planner
           </p>
           <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink sm:text-4xl">
-            Week of{" "}
-            {weekStart.toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              timeZone: "UTC",
-            })}
+            Week {weekNumber}
           </h1>
         </div>
         <div className="flex flex-none flex-wrap items-center gap-2.5">
