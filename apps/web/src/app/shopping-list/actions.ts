@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { addDays, toISODate } from "@/lib/week";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeUnit, type NormalizedUnit } from "@pantry-panic/shared";
+import { normalizeUnit, pickDisplayUnit, type NormalizedUnit, type UnitSystem } from "@pantry-panic/shared";
 
 interface IngredientRow {
   recipe_id: string;
@@ -41,6 +41,13 @@ export async function generateShoppingList(formData: FormData) {
   }
   const { weekStartDate } = parsed.data;
   const weekEndISO = toISODate(addDays(new Date(`${weekStartDate}T00:00:00Z`), 6));
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("unit_system")
+    .eq("id", user.id)
+    .maybeSingle<{ unit_system: UnitSystem }>();
+  const unitSystem: UnitSystem = profile?.unit_system ?? "imperial";
 
   // Get or create this week's list.
   const { data: list, error: listError } = await supabase
@@ -96,7 +103,6 @@ export async function generateShoppingList(formData: FormData) {
     category: string | null;
     unitGroup: NormalizedUnit["group"] | null;
     quantityBase: number | null;
-    unitsSeen: Map<string, NormalizedUnit>; // only used when unitGroup is set
     unit: string | null; // only used when unitGroup is null
   }
   const aggregated = new Map<string, Aggregate>();
@@ -122,34 +128,32 @@ export async function generateShoppingList(formData: FormData) {
         existing.quantityBase != null && contribution != null
           ? existing.quantityBase + contribution
           : null;
-      if (norm) existing.unitsSeen.set(norm.label, norm);
     } else {
       aggregated.set(key, {
         name: ingredient.name,
         category: ingredient.category,
         unitGroup: norm?.group ?? null,
         quantityBase: contribution,
-        unitsSeen: norm ? new Map([[norm.label, norm]]) : new Map(),
         unit: ingredient.unit,
       });
     }
   }
 
   // Converts a merged bucket's base-unit total back into a single display
-  // unit: the largest of the units actually used for it, so an ingredient
-  // that's mostly measured in cups doesn't switch to teaspoons just
-  // because one recipe happened to use a teaspoon of it somewhere. Picking
-  // "largest of what was actually used" (rather than always the same
-  // fixed unit) keeps this order-independent — the same set of recipes
-  // always produces the same display unit, however the DB happens to
-  // return the rows, which matters so a regenerate doesn't reshuffle units
-  // and lose the "already checked" carry-over below.
+  // unit, picked from the user's preferred unit system (profiles.unit_system)
+  // rather than "whichever unit a recipe happened to use" — so switching
+  // that preference actually changes what the shopping list shows, and an
+  // ingredient always displays in the same system regardless of which
+  // recipes it came from. pickDisplayUnit is driven purely by the total
+  // and the system, so this stays order-independent — the same set of
+  // recipes always produces the same display unit, however the DB happens
+  // to return the rows, which matters so a regenerate doesn't reshuffle
+  // units and lose the "already checked" carry-over below.
   function resolveDisplay(item: Aggregate): { quantity: number | null; unit: string | null } {
     if (!item.unitGroup) {
       return { quantity: item.quantityBase, unit: item.unit };
     }
-    const candidates = [...item.unitsSeen.values()];
-    const display = candidates.reduce((largest, c) => (c.toBase > largest.toBase ? c : largest));
+    const display = pickDisplayUnit(item.unitGroup, unitSystem, item.quantityBase ?? 0);
     return {
       quantity: item.quantityBase == null ? null : item.quantityBase / display.toBase,
       unit: display.label,
