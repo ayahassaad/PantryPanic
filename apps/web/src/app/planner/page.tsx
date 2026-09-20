@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, getISOWeekNumber, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
-import { PlannerCell } from "./planner-cell";
+import { PlannerCell, type PlannerEntryView } from "./planner-cell";
+import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { CopyWeekButton } from "./copy-week-button";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -93,6 +94,18 @@ export default async function PlannerPage({
     entryByCell.set(`${entry.plan_date}_${entry.meal_slot}`, entry);
   }
 
+  function toEntryView(entry: PlannerEntry | undefined): PlannerEntryView | null {
+    if (!entry) {
+      return null;
+    }
+    return {
+      id: entry.id,
+      recipeId: entry.recipe?.id ?? null,
+      recipeTitle: entry.recipe?.title ?? null,
+      servings: entry.servings,
+    };
+  }
+
   const hasRecipes = Boolean(recipes && recipes.length > 0);
   const tip = PLANNER_TIPS[new Date().getDay() % PLANNER_TIPS.length] ?? PLANNER_TIPS[0];
 
@@ -100,6 +113,24 @@ export default async function PlannerPage({
   const filledSlots = entries?.length ?? 0;
 
   const todayColumnIndex = weekDays.findIndex((d) => toISODate(d) === todayISO);
+
+  // Same per-day data as the desktop grid below, just reshaped into one
+  // object per day (instead of one cell per grid position) for the
+  // mobile day-switcher view.
+  const mobileDays: MobileDay[] = weekDays.map((day, i) => {
+    const dateISO = toISODate(day);
+    return {
+      dateISO,
+      dayLabel: DAY_LABELS[i] ?? "",
+      dayNumber: day.getUTCDate(),
+      isToday: dateISO === todayISO,
+      entries: Object.fromEntries(
+        MEAL_SLOTS.map((slot) => [slot, toEntryView(entryByCell.get(`${dateISO}_${slot}`))]),
+      ) as MobileDay["entries"],
+    };
+  });
+  const mobileDefaultDateISO =
+    mobileDays.find((d) => d.isToday)?.dateISO ?? mobileDays[0]?.dateISO ?? weekStartISO;
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8 sm:px-10">
@@ -169,7 +200,10 @@ export default async function PlannerPage({
         </p>
       )}
 
-      <div className="overflow-x-auto">
+      {/* 780px+ side-by-side week grid — hidden below md, where
+          MobileWeekView below takes over with a one-day-at-a-time layout
+          instead of forcing horizontal scrolling. */}
+      <div className="hidden overflow-x-auto md:block">
         <div className="relative grid min-w-[780px] grid-cols-[76px_repeat(7,1fr)] items-center gap-2.5">
           {/* A subtle tint behind today's whole column, so it's visible
               at a glance instead of just the small circle on its date
@@ -217,23 +251,13 @@ export default async function PlannerPage({
               </div>,
               ...weekDays.map((day) => {
                 const dateISO = toISODate(day);
-                const entry = entryByCell.get(`${dateISO}_${slot}`);
 
                 return (
                   <PlannerCell
                     key={`${slot}-${dateISO}`}
                     dateISO={dateISO}
                     slot={slot}
-                    initialEntry={
-                      entry
-                        ? {
-                            id: entry.id,
-                            recipeId: entry.recipe?.id ?? null,
-                            recipeTitle: entry.recipe?.title ?? null,
-                            servings: entry.servings,
-                          }
-                        : null
-                    }
+                    initialEntry={toEntryView(entryByCell.get(`${dateISO}_${slot}`))}
                     recipes={recipes ?? []}
                     hasRecipes={hasRecipes}
                     cellClass={slotStyle.cell}
@@ -245,6 +269,15 @@ export default async function PlannerPage({
           })}
         </div>
       </div>
+
+      <MobileWeekView
+        days={mobileDays}
+        recipes={recipes ?? []}
+        hasRecipes={hasRecipes}
+        slotOrder={MEAL_SLOTS}
+        slotStyles={SLOT_STYLES}
+        defaultDateISO={mobileDefaultDateISO}
+      />
 
       <div className="mt-8 flex max-w-xl items-center gap-4 rounded-2xl bg-cream-deep px-5 py-4">
         <Mascot className="h-[50px] w-[46px] flex-none" />
