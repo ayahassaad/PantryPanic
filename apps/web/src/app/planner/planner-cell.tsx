@@ -238,7 +238,7 @@ export function PlannerCell({
             onClick={() => adjustServings(-1)}
             disabled={entry.servings <= MIN_SERVINGS}
             aria-label="Fewer servings"
-            className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
+            className="flex h-4 w-4 flex-none items-center justify-center rounded-full border border-current text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
           >
             &minus;
           </button>
@@ -250,7 +250,7 @@ export function PlannerCell({
             onClick={() => adjustServings(1)}
             disabled={entry.servings >= MAX_SERVINGS}
             aria-label="More servings"
-            className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
+            className="flex h-4 w-4 flex-none items-center justify-center rounded-full border border-current text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
           >
             +
           </button>
