@@ -1,9 +1,10 @@
 "use server";
 
 // Backs the "Fill week with AI" button (see fill-week-button.tsx). The
-// user picks up to MAX_SELECTED_SLOTS empty meals in the popup; one
-// Claude call returns one recipe per picked slot, which then all get
-// saved to the library and assigned in the same pass. See the comment on
+// user picks up to MAX_SELECTED_SLOTS empty meals by clicking boxes on
+// the planner grid itself (see fill-week-selection.tsx); one Claude call
+// returns one recipe per picked slot, which then all get saved to the
+// library and assigned in the same pass. See the comment on
 // FILL_WEEK_TOOL in lib/anthropic/suggest-recipe.ts for why this is
 // batched at all rather than looping the single-suggestion action once
 // per slot.
@@ -29,21 +30,16 @@ import {
   MissingApiKeyError,
   RecipeSuggestionUpstreamError,
 } from "@/lib/anthropic/suggest-recipe";
+import { MAX_SELECTED_SLOTS } from "./fill-week-constants";
 
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-// Keep in sync with the same-named cap in fill-week-button.tsx (that one
-// keeps the UI from offering more than this; this is what actually
-// enforces it — never trust the client alone). See the top-of-file
-// comment for why this number exists at all.
-const MAX_SELECTED_SLOTS = 8;
 
 const SLOT_KEY_PATTERN = /^(\d{4}-\d{2}-\d{2})_(breakfast|lunch|dinner)$/;
 
 const FillWeekSchema = z.object({
   weekStartISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   // Each entry is "YYYY-MM-DD_mealSlot", exactly what slotKey() in
-  // fill-week-button.tsx builds for each checkbox.
+  // fill-week-selection.tsx builds for each grid-cell pick.
   selectedSlots: z
     .array(z.string().regex(SLOT_KEY_PATTERN))
     .min(1, "Pick at least one meal to fill.")
@@ -97,10 +93,10 @@ export async function fillWeekWithAi(
   const weekStart = new Date(`${weekStartISO}T00:00:00Z`);
   const weekEndISO = toISODate(addDays(weekStart, 6));
 
-  // Re-check what's actually planned right now — the popup's checkbox
-  // list was built from whatever page.tsx last rendered, which can be
-  // stale (another tab, or a meal added since this popup opened). Never
-  // trust the client's word for which slots are safe to overwrite.
+  // Re-check what's actually planned right now — the grid selection was
+  // built from whatever page.tsx last rendered, which can be stale
+  // (another tab, or a meal added since these were picked). Never trust
+  // the client's word for which slots are safe to overwrite.
   const { data: existingEntries, error: fetchError } = await supabase
     .from("meal_plan_entries")
     .select("plan_date, meal_slot")

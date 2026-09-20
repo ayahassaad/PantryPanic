@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { MealSlot } from "@pantry-panic/shared";
+import { DoodleCarrot, DoodleGrapes } from "@/components/food-doodles";
 import { removeMealPlanEntry, updateMealPlanServings } from "./actions";
 import { RecipeModal } from "./recipe-modal";
 import type { AssignedEntry } from "./recipe-actions";
+import { useFillWeekSelection } from "./fill-week-selection";
 
 export interface RecipeOption {
   id: string;
@@ -49,6 +51,16 @@ const MAX_SERVINGS = 20;
 // page itself).
 const CELL_HEIGHT = "h-[150px]";
 
+// A couple of small doodles that fall inside a cell picked for "Fill
+// week with AI" — same falling idea as the recipe card hover and the
+// today column (see .selected-doodle-fall in globals.css), just scaled
+// down to fit a single ~150px cell without crowding the "+ Add meal"
+// button. Two is plenty at this size; more just reads as clutter.
+const SELECTED_CELL_DOODLES: Array<{ Shape: typeof DoodleCarrot; left: string; delay: string }> = [
+  { Shape: DoodleCarrot, left: "18%", delay: "0s" },
+  { Shape: DoodleGrapes, left: "62%", delay: "1.5s" },
+];
+
 interface PlannerCellProps {
   dateISO: string;
   slot: MealSlot;
@@ -81,6 +93,8 @@ export function PlannerCell({
   const [modalOpen, setModalOpen] = useState(false);
   const [, startTransition] = useTransition();
   const removalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { isSelected, toggle: toggleFillSelection } = useFillWeekSelection();
+  const selectedForFill = isSelected(dateISO, slot);
 
   // Every other update to this cell (add/remove/servings) is done
   // optimistically by calling a server action directly and setting local
@@ -286,13 +300,41 @@ export function PlannerCell({
   // the same popup — see recipe-modal.tsx. Defaults to the "existing"
   // tab when there's a library to search, otherwise straight to "new"
   // since there's nothing to pick from yet.
+  //
+  // The rest of the box (anywhere but that button) doubles as a toggle
+  // for "Fill week with AI" — click it to mark this meal as one to ask
+  // AI for, click again to unmark. The button stops the click from
+  // bubbling up so opening the modal and toggling selection stay two
+  // separate gestures instead of both firing at once.
   return (
     <>
-      <div className={`flex ${CELL_HEIGHT} items-center justify-center rounded-xl border-2 border-dashed border-ink-faint p-2.5`}>
+      <div
+        onClick={() => toggleFillSelection(dateISO, slot)}
+        className={`relative flex ${CELL_HEIGHT} cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${
+          selectedForFill ? "border-blueberry-400 bg-blueberry-50" : "border-dashed border-ink-faint"
+        }`}
+      >
+        {selectedForFill && (
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            {SELECTED_CELL_DOODLES.map(({ Shape, left, delay }, i) => (
+              <Shape
+                key={i}
+                className="selected-doodle-fall absolute top-0 h-3.5 w-3.5"
+                style={{ left, animationDelay: delay }}
+              />
+            ))}
+            <span className="absolute left-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-ink bg-blueberry-400 text-[9px] font-bold leading-none text-cream">
+              &#10003;
+            </span>
+          </div>
+        )}
         <button
           type="button"
-          onClick={() => setModalOpen(true)}
-          className="wobble-btn border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition hover:border-ink hover:bg-cream-deep hover:text-ink"
+          onClick={(event) => {
+            event.stopPropagation();
+            setModalOpen(true);
+          }}
+          className="wobble-btn relative z-10 border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition hover:border-ink hover:bg-cream-deep hover:text-ink"
         >
           + Add meal
         </button>

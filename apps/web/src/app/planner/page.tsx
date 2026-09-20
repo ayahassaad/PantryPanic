@@ -10,6 +10,7 @@ import { PlannerCell, type PlannerEntryView, type RecipeOption } from "./planner
 import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { CopyWeekButton } from "./copy-week-button";
 import { FillWeekButton } from "./fill-week-button";
+import { FillWeekSelectionProvider } from "./fill-week-selection";
 import { RotatingTip } from "./rotating-tip";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -131,22 +132,6 @@ export default async function PlannerPage({
     entryByCell.set(`${entry.plan_date}_${entry.meal_slot}`, entry);
   }
 
-  // Every (day, slot) pair with nothing planned yet — this is what
-  // FillWeekButton offers as checkboxes, so someone can ask AI to fill
-  // just a few specific meals instead of always the whole week. Built
-  // day-major/slot-major (Mon breakfast, Mon lunch, Mon dinner, Tue
-  // breakfast, ...) so "the first 8" reads as a sensible chronological
-  // default rather than an arbitrary subset.
-  const emptySlots: Array<{ dateISO: string; mealSlot: MealSlot; dayLabel: string; dayNumber: number }> = [];
-  weekDays.forEach((day, i) => {
-    const dateISO = toISODate(day);
-    for (const slot of MEAL_SLOTS) {
-      if (!entryByCell.has(`${dateISO}_${slot}`)) {
-        emptySlots.push({ dateISO, mealSlot: slot, dayLabel: DAY_LABELS[i] ?? "", dayNumber: day.getUTCDate() });
-      }
-    }
-  });
-
   function toEntryView(entry: PlannerEntry | undefined): PlannerEntryView | null {
     if (!entry) {
       return null;
@@ -193,6 +178,12 @@ export default async function PlannerPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-[1600px] px-6 py-8 sm:px-10">
+      {/* Wraps everything below — both the desktop grid and the mobile
+          day view render PlannerCell, and FillWeekButton lives in the
+          header row alongside them, none of them a parent/child of the
+          others. See fill-week-selection.tsx for why this needs a
+          context rather than props passed down one path. */}
+      <FillWeekSelectionProvider weekStartISO={weekStartISO}>
       <Link
         href="/dashboard"
         className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
@@ -243,7 +234,7 @@ export default async function PlannerPage({
           >
             Next &rarr;
           </Link>
-          <FillWeekButton weekStartISO={weekStartISO} emptySlots={emptySlots} />
+          <FillWeekButton weekStartISO={weekStartISO} />
           <CopyWeekButton
             weekStartISO={weekStartISO}
             nextWeekISO={nextWeekISO}
@@ -371,6 +362,7 @@ export default async function PlannerPage({
         slotStyles={SLOT_STYLES}
         defaultDateISO={mobileDefaultDateISO}
       />
+      </FillWeekSelectionProvider>
     </main>
   );
 }

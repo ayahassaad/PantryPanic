@@ -152,3 +152,20 @@ body {
     opacity: 0;
   }
 }
+
+/* Planner: a meal box picked for "Fill week with AI" gets the same
+   falling-doodle treatment as today's column above — same keyframes,
+   just a distinct class so the selection styling in planner-cell.tsx
+   isn't semantically tied to the word "today". The little checkmark
+   badge PlannerCell also renders is the actual state indicator (visible
+   even with the animation off below); this is the fun part on top. */
+.selected-doodle-fall {
+  opacity: 0;
+  animation: today-doodle-fall 4.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .selected-doodle-fall {
+    animation: none;
+    opacity: 0;
+  }
+}
