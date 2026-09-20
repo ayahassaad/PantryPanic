@@ -7,13 +7,23 @@ import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, toISODate } from "@/lib/week";
 import { createClient } from "@/lib/supabase/server";
 
-const SetEntrySchema = z.object({
+const AssignEntrySchema = z.object({
   recipeId: z.string().uuid(),
   planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   mealSlot: z.enum(MEAL_SLOTS),
 });
 
-export async function setMealPlanEntry(formData: FormData) {
+// Called directly from PlannerCell's recipe picker (not as a <form
+// action>), same reasoning as the recipe favorites toggle — assigning a
+// meal needs to update the cell the instant a recipe is picked, using the
+// id/servings the server actually wrote, rather than waiting on a full
+// form submission + redirect. Returns the new entry's id and starting
+// servings so the cell can show them without a second round trip.
+export async function assignMealPlanEntry(
+  recipeId: string,
+  planDate: string,
+  mealSlot: MealSlot,
+): Promise<{ error?: string; entryId?: string; servings?: number }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,20 +33,10 @@ export async function setMealPlanEntry(formData: FormData) {
     redirect("/login");
   }
 
-  const parsed = SetEntrySchema.safeParse({
-    recipeId: formData.get("recipeId"),
-    planDate: formData.get("planDate"),
-    mealSlot: formData.get("mealSlot"),
-  });
-
+  const parsed = AssignEntrySchema.safeParse({ recipeId, planDate, mealSlot });
   if (!parsed.success) {
-    // The form only ever submits valid values, so failing here means a
-    // tampered request, not a normal mistake — nothing useful to show on
-    // a redirect, so just bail without writing anything.
-    return;
+    return { error: "Couldn't add that meal." };
   }
-
-  const { recipeId, planDate, mealSlot } = parsed.data;
 
   // Confirm the recipe is actually visible to this user before assigning
   // it — same reasoning as the favorites toggle: without this, a crafted
@@ -45,28 +45,47 @@ export async function setMealPlanEntry(formData: FormData) {
   const { data: recipe } = await supabase
     .from("recipes")
     .select("id")
-    .eq("id", recipeId)
+    .eq("id", parsed.data.recipeId)
     .maybeSingle();
 
   if (!recipe) {
-    return;
+    return { error: "Couldn't add that meal." };
   }
+
+  // New meals start at the household's default serving size (see
+  // profiles.household_size) — 2 if it's somehow never been set — and can
+  // be nudged up or down afterward with the +/- stepper on the cell.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_size")
+    .eq("id", user.id)
+    .maybeSingle();
+  const servings = profile?.household_size ?? 2;
 
   // Upsert on the (user_id, plan_date, meal_slot) unique constraint —
   // setting a new recipe on an already-filled slot replaces it instead
   // of erroring.
-  await supabase.from("meal_plan_entries").upsert(
-    {
-      user_id: user.id,
-      recipe_id: recipeId,
-      plan_date: planDate,
-      meal_slot: mealSlot,
-      servings: 1,
-    },
-    { onConflict: "user_id,plan_date,meal_slot" },
-  );
+  const { data: upserted, error } = await supabase
+    .from("meal_plan_entries")
+    .upsert(
+      {
+        user_id: user.id,
+        recipe_id: parsed.data.recipeId,
+        plan_date: parsed.data.planDate,
+        meal_slot: parsed.data.mealSlot,
+        servings,
+      },
+      { onConflict: "user_id,plan_date,meal_slot" },
+    )
+    .select("id, servings")
+    .single();
+
+  if (error || !upserted) {
+    return { error: "Couldn't add that meal." };
+  }
 
   revalidatePath("/planner");
+  return { entryId: upserted.id, servings: upserted.servings };
 }
 
 // Called directly from PlannerCell (not as a <form action>), so it takes
@@ -98,6 +117,42 @@ export async function removeMealPlanEntry(entryId: string) {
   revalidatePath("/planner");
 }
 
+const UpdateServingsSchema = z.object({
+  entryId: z.string().uuid(),
+  servings: z.number().int().min(1).max(20),
+});
+
+// Called directly from PlannerCell's +/- stepper (not as a <form
+// action>) — nudging servings up or down is exactly the kind of
+// click-repeatedly-and-expect-it-instant interaction the favorites star
+// and the remove button already use, so this follows the same pattern.
+export async function updateMealPlanServings(entryId: string, servings: number) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const parsed = UpdateServingsSchema.safeParse({ entryId, servings });
+  if (!parsed.success) {
+    return;
+  }
+
+  // The RLS "update" policy on meal_plan_entries already only allows
+  // updating rows where user_id = auth.uid() — the .eq() below is
+  // belt-and-suspenders on top of that.
+  await supabase
+    .from("meal_plan_entries")
+    .update({ servings: parsed.data.servings })
+    .eq("id", parsed.data.entryId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/planner");
+}
+
 interface CopyableEntry {
   recipe_id: string;
   plan_date: string;
@@ -113,7 +168,7 @@ const CopyWeekSchema = z.object({
 // week — same day-of-week, same slot, same recipe and servings — so
 // repeating a week you liked doesn't mean rebuilding it from scratch.
 // Upserts on the same (user_id, plan_date, meal_slot) constraint
-// setMealPlanEntry uses, so it overwrites whatever's already in next
+// assignMealPlanEntry uses, so it overwrites whatever's already in next
 // week's matching slots rather than erroring or duplicating; the button
 // that calls this warns about that before it does.
 export async function copyWeekForward(

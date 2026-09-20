@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { MealSlot } from "@pantry-panic/shared";
-import { removeMealPlanEntry, setMealPlanEntry } from "./actions";
+import { assignMealPlanEntry, removeMealPlanEntry, updateMealPlanServings } from "./actions";
 
 export interface RecipeOption {
   id: string;
   title: string;
+  isFavorite: boolean;
 }
 
 export interface PlannerEntryView {
@@ -32,6 +33,13 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
+// How long a removed meal stays reversible before the delete actually
+// hits the server — long enough to catch a misclick, short enough that
+// it doesn't feel like the click didn't register.
+const UNDO_WINDOW_MS = 5000;
+const MIN_SERVINGS = 1;
+const MAX_SERVINGS = 20;
+
 interface PlannerCellProps {
   dateISO: string;
   slot: MealSlot;
@@ -42,13 +50,11 @@ interface PlannerCellProps {
   textClass: string;
 }
 
-// Removing a planned meal now clears the cell the instant you click
-// "remove" instead of waiting on the round trip to Supabase — same
-// pattern as the shopping list checkbox and the recipe favorite star.
-// Assigning a recipe still submits a normal form (picking one from the
-// dropdown and clicking "Set" is a deliberate, one-off action rather
-// than something you'd click repeatedly and expect to feel instant), so
-// that half is unchanged.
+// Removing a planned meal clears the cell the instant you click the "x",
+// and assigning one fills it the instant you pick a recipe — same
+// optimistic-first pattern as the shopping list checkbox and the recipe
+// favorite star, rather than waiting on the round trip to Supabase each
+// time.
 export function PlannerCell({
   dateISO,
   slot,
@@ -59,7 +65,24 @@ export function PlannerCell({
   textClass,
 }: PlannerCellProps) {
   const [entry, setEntry] = useState(initialEntry);
+  const [pendingRemoval, setPendingRemoval] = useState<PlannerEntryView | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [, startTransition] = useTransition();
+  const removalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clears any still-pending removal timer if the cell unmounts (e.g. the
+  // week is changed) before the undo window runs out — otherwise it'd
+  // fire the delete against a component that's no longer there to react
+  // to the result.
+  useEffect(() => {
+    return () => {
+      if (removalTimer.current) {
+        clearTimeout(removalTimer.current);
+      }
+    };
+  }, []);
 
   function handleRemove() {
     if (!entry) {
@@ -67,53 +90,172 @@ export function PlannerCell({
     }
     const removedEntry = entry;
     setEntry(null);
+    setPendingRemoval(removedEntry);
+
+    removalTimer.current = setTimeout(() => {
+      removalTimer.current = null;
+      setPendingRemoval(null);
+
+      startTransition(async () => {
+        try {
+          await removeMealPlanEntry(removedEntry.id);
+        } catch (error) {
+          if (isRedirectError(error)) {
+            throw error;
+          }
+          // Couldn't actually delete it — put it back rather than leave
+          // the planner quietly wrong.
+          setEntry(removedEntry);
+        }
+      });
+    }, UNDO_WINDOW_MS);
+  }
+
+  function handleUndo() {
+    if (removalTimer.current) {
+      clearTimeout(removalTimer.current);
+      removalTimer.current = null;
+    }
+    if (pendingRemoval) {
+      setEntry(pendingRemoval);
+      setPendingRemoval(null);
+    }
+  }
+
+  function adjustServings(delta: number) {
+    if (!entry) {
+      return;
+    }
+    const nextServings = Math.min(MAX_SERVINGS, Math.max(MIN_SERVINGS, entry.servings + delta));
+    if (nextServings === entry.servings) {
+      return;
+    }
+    const previousEntry = entry;
+    setEntry({ ...entry, servings: nextServings });
 
     startTransition(async () => {
       try {
-        await removeMealPlanEntry(removedEntry.id);
+        await updateMealPlanServings(entry.id, nextServings);
       } catch (error) {
         if (isRedirectError(error)) {
           throw error;
         }
-        // Couldn't actually delete it — put it back rather than leave
-        // the planner quietly wrong.
-        setEntry(removedEntry);
+        setEntry(previousEntry);
       }
     });
+  }
+
+  function handleAssign(recipeId: string) {
+    if (!recipeId || isAssigning) {
+      return;
+    }
+    const recipe = recipes.find((r) => r.id === recipeId);
+    if (!recipe) {
+      return;
+    }
+    setIsAssigning(true);
+    setAssignError(null);
+
+    startTransition(async () => {
+      try {
+        const result = await assignMealPlanEntry(recipeId, dateISO, slot);
+        if (result.entryId) {
+          setEntry({
+            id: result.entryId,
+            recipeId: recipe.id,
+            recipeTitle: recipe.title,
+            servings: result.servings ?? 1,
+          });
+          setQuery("");
+        } else {
+          // On error the cell was never shown as filled, so there's
+          // nothing to revert — it just stays the empty "search" state
+          // with a reason why.
+          setAssignError(result.error ?? "Couldn't add that meal.");
+        }
+      } catch (error) {
+        if (isRedirectError(error)) {
+          throw error;
+        }
+        setAssignError("Couldn't add that meal.");
+      } finally {
+        setIsAssigning(false);
+      }
+    });
+  }
+
+  // Reversible removal: while pendingRemoval is set, the cell shows an
+  // "Undo" chip instead of either its filled or empty state — the actual
+  // delete doesn't reach the server until UNDO_WINDOW_MS passes with no
+  // click.
+  if (pendingRemoval) {
+    return (
+      <div className="flex h-[92px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-ink-faint p-2 text-center">
+        <span className="text-[11px] font-semibold text-ink-soft">Removed</span>
+        <button
+          type="button"
+          onClick={handleUndo}
+          className="rounded-lg border-2 border-ink bg-cream-deep px-2.5 py-0.5 font-display text-[10px] font-semibold text-ink transition hover:bg-cream"
+        >
+          Undo
+        </button>
+      </div>
+    );
   }
 
   // Fixed height (not min-height) so a filled cell is exactly the same
   // size as an empty "+ Add" one — a long recipe title used to push the
   // box taller than its neighbors and throw off the whole row. The title
-  // is clamped to 3 lines instead, and the box itself is now the link to
-  // the recipe (tap/click anywhere on it for the full details and
-  // instructions) with just a small "x" in the corner to remove it.
+  // is clamped to 2 lines instead, and the box itself is now the link to
+  // the recipe (tap/click anywhere on the title for the full details and
+  // instructions) with a servings stepper underneath and a small "x" in
+  // the corner to remove it.
   if (entry) {
     return (
       <div
-        className={`relative h-[92px] overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass}`}
+        className={`relative h-[92px] overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass}`}
       >
         {entry.recipeId ? (
           <Link
             href={`/recipes/${entry.recipeId}`}
-            className={`flex h-full flex-col justify-center gap-1 pr-5 transition hover:brightness-110 ${textClass}`}
+            className={`flex flex-col pr-5 transition hover:brightness-110 ${textClass}`}
           >
-            <span className="line-clamp-3 font-display text-xs font-semibold leading-snug">
+            <span className="line-clamp-2 font-display text-xs font-semibold leading-snug">
               {entry.recipeTitle}
             </span>
-            {entry.servings > 1 && (
-              <span className="text-[10px]" style={{ opacity: 0.8 }}>
-                {entry.servings} servings
-              </span>
-            )}
           </Link>
         ) : (
-          <div className={`flex h-full flex-col justify-center pr-5 ${textClass}`}>
+          <div className={`pr-5 ${textClass}`}>
             <span className="text-xs" style={{ opacity: 0.75 }}>
               Recipe removed
             </span>
           </div>
         )}
+
+        <div className={`mt-1 flex items-center gap-1.5 ${textClass}`} style={{ opacity: 0.85 }}>
+          <button
+            type="button"
+            onClick={() => adjustServings(-1)}
+            disabled={entry.servings <= MIN_SERVINGS}
+            aria-label="Fewer servings"
+            className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
+          >
+            &minus;
+          </button>
+          <span className="text-[10px] font-semibold tabular-nums">
+            {entry.servings} {entry.servings === 1 ? "serving" : "servings"}
+          </span>
+          <button
+            type="button"
+            onClick={() => adjustServings(1)}
+            disabled={entry.servings >= MAX_SERVINGS}
+            aria-label="More servings"
+            className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
+          >
+            +
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={handleRemove}
@@ -127,34 +269,46 @@ export function PlannerCell({
     );
   }
 
+  // Favorited recipes were already sorted to the front of `recipes` by
+  // the planner page, so filtering here preserves that order — favorites
+  // still show first among whatever matches the search text.
+  const filteredRecipes = query.trim()
+    ? recipes.filter((r) => r.title.toLowerCase().includes(query.trim().toLowerCase()))
+    : recipes;
+
   return (
-    <div className="flex h-[92px] items-center justify-center rounded-xl border-2 border-dashed border-ink-faint p-2">
+    <div className="flex h-[92px] flex-col justify-center gap-1 rounded-xl border-2 border-dashed border-ink-faint p-2">
       {hasRecipes ? (
-        <form action={setMealPlanEntry} className="flex h-full w-full flex-col justify-center gap-1">
-          <input type="hidden" name="planDate" value={dateISO} />
-          <input type="hidden" name="mealSlot" value={slot} />
+        <>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search recipes…"
+            aria-label="Search recipes"
+            disabled={isAssigning}
+            className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1.5 py-1 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
+          />
           <select
-            name="recipeId"
-            required
-            defaultValue=""
-            className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1 py-1 text-[11px] text-ink outline-none focus:border-ink"
+            value=""
+            onChange={(e) => handleAssign(e.target.value)}
+            disabled={isAssigning}
+            aria-label="Choose a recipe"
+            className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1 py-1 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
           >
             <option value="" disabled>
-              + Add
+              {isAssigning ? "Adding…" : filteredRecipes.length === 0 ? "No matches" : "+ Add"}
             </option>
-            {recipes.map((r) => (
+            {filteredRecipes.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.title}
+                {r.isFavorite ? `★ ${r.title}` : r.title}
               </option>
             ))}
           </select>
-          <button
-            type="submit"
-            className="rounded-lg border-2 border-ink bg-cream-deep px-1 py-0.5 font-display text-[10px] font-semibold text-ink transition hover:bg-cream"
-          >
-            Set
-          </button>
-        </form>
+          {assignError && (
+            <p className="text-[10px] font-bold leading-tight text-tomato-600">{assignError}</p>
+          )}
+        </>
       ) : (
         <span className="text-2xl text-ink-faint">+</span>
       )}

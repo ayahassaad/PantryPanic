@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, getISOWeekNumber, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
-import { PlannerCell, type PlannerEntryView } from "./planner-cell";
+import { PlannerCell, type PlannerEntryView, type RecipeOption } from "./planner-cell";
 import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { CopyWeekButton } from "./copy-week-button";
 
@@ -42,7 +42,10 @@ interface PlannerEntry {
   recipe: { id: string; title: string } | null;
 }
 
-interface RecipeOption {
+// The raw shape the recipes query returns — everything RecipeOption has
+// except isFavorite, which isn't a column and gets merged in below from a
+// separate query against recipe_favorites.
+interface RecipeOptionRow {
   id: string;
   title: string;
 }
@@ -74,7 +77,7 @@ export default async function PlannerPage({
   // recipe:recipes(id, title) embeds the joined recipe via the recipe_id
   // foreign key — PostgREST resolves the relationship automatically, no
   // manual join needed.
-  const [{ data: entries }, { data: recipes }] = await Promise.all([
+  const [{ data: entries }, { data: recipeRows }, { data: favoriteRows }] = await Promise.all([
     supabase
       .from("meal_plan_entries")
       .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
@@ -86,8 +89,18 @@ export default async function PlannerPage({
       .from("recipes")
       .select("id, title")
       .order("title")
-      .returns<RecipeOption[]>(),
+      .returns<RecipeOptionRow[]>(),
+    supabase.from("recipe_favorites").select("recipe_id").eq("owner_id", user.id),
   ]);
+
+  // Favorited recipes are sorted to the front so they're the first thing
+  // offered when assigning a meal — Array#sort is stable, so the
+  // alphabetical order from the query above is preserved within each
+  // group (favorites, then everything else).
+  const favoritedIds = new Set((favoriteRows ?? []).map((row) => row.recipe_id as string));
+  const recipes: RecipeOption[] = (recipeRows ?? [])
+    .map((r) => ({ ...r, isFavorite: favoritedIds.has(r.id) }))
+    .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
   const entryByCell = new Map<string, PlannerEntry>();
   for (const entry of entries ?? []) {
@@ -258,7 +271,7 @@ export default async function PlannerPage({
                     dateISO={dateISO}
                     slot={slot}
                     initialEntry={toEntryView(entryByCell.get(`${dateISO}_${slot}`))}
-                    recipes={recipes ?? []}
+                    recipes={recipes}
                     hasRecipes={hasRecipes}
                     cellClass={slotStyle.cell}
                     textClass={slotStyle.text}
@@ -272,7 +285,7 @@ export default async function PlannerPage({
 
       <MobileWeekView
         days={mobileDays}
-        recipes={recipes ?? []}
+        recipes={recipes}
         hasRecipes={hasRecipes}
         slotOrder={MEAL_SLOTS}
         slotStyles={SLOT_STYLES}
