@@ -251,11 +251,16 @@ export async function generateWeekSuggestions(
 
   const anthropic = new Anthropic({ apiKey });
   const prompt = buildWeekPrompt(input);
-  // Generous per-slot budget (a recipe with ingredients + steps runs a
-  // few hundred tokens) capped at Claude's practical output ceiling for
-  // this model, so a nearly-empty week (up to 21 slots) doesn't get cut
-  // off mid-response.
-  const maxTokens = Math.min(8192, 600 + input.slotLabels.length * 350);
+  // One recipe (title + description + a real ingredient list + steps)
+  // gets a flat 1024 tokens in generateRecipeSuggestion above and that's
+  // reliable, so budget the same 1024/recipe here rather than a lower
+  // per-slot rate — the previous formula (600 base + 350/slot) gave a
+  // single-slot request only 950 tokens total, LESS than what one recipe
+  // alone gets on the non-batch path, and cut it off almost immediately.
+  // Capped at 8192 (this model's practical output ceiling), which lines
+  // up with MAX_SELECTED_SLOTS = 8 in fill-week-constants.ts — the
+  // largest batch this ever has to cover.
+  const maxTokens = Math.min(8192, input.slotLabels.length * 1024);
 
   let message: Anthropic.Message;
   try {
