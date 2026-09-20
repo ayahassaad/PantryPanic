@@ -136,13 +136,18 @@ export async function generateRecipeSuggestion(
     // Node's default console depth hides anything nested more than two
     // levels deep — printed as "[Object]" — which is exactly where the
     // useful part of a Zod error lives (the issue list, and the raw value
-    // that failed). Stringify explicitly so it actually shows up in
-    // Vercel's logs instead of a dead end.
+    // that failed). Some log viewers (Vercel included) also render a
+    // multi-argument console.error as a collapsible structured object
+    // rather than plain text, which loses the detail again on copy/paste.
+    // Joining everything into ONE plain string sidesteps both: there's
+    // nothing left for either layer to fold away.
     console.error(
-      "[suggest-recipe] suggest_recipe response failed validation:",
-      JSON.stringify(parsed.error.issues, null, 2),
-      "\nRaw input:",
-      JSON.stringify(toolUse.input, null, 2),
+      [
+        "[suggest-recipe] suggest_recipe response failed validation:",
+        JSON.stringify(parsed.error.issues, null, 2),
+        "Raw input:",
+        JSON.stringify(toolUse.input, null, 2),
+      ].join("\n"),
     );
     throw new RecipeSuggestionUpstreamError(
       "Got a malformed recipe suggestion. Try again.",
@@ -268,6 +273,21 @@ export async function generateWeekSuggestions(
     );
   }
 
+  if (message.stop_reason === "max_tokens") {
+    // The response got cut off mid-generation — Claude's tool_use.input
+    // ends up incomplete JSON in this case, which fails the schema check
+    // below in a way that's indistinguishable from Claude just getting the
+    // shape wrong. Catching it here by stop_reason instead gives a much
+    // more useful error (and points straight at "ask for fewer at once"
+    // instead of "try again" for the same failure).
+    console.error(
+      `[suggest-recipe] fill_week response hit max_tokens (slotCount=${input.slotLabels.length}, maxTokens=${maxTokens})`,
+    );
+    throw new RecipeSuggestionUpstreamError(
+      "That batch of suggestions was too large and got cut off. Try again with fewer empty slots at once.",
+    );
+  }
+
   const toolUse = message.content.find(
     (block): block is Anthropic.ToolUseBlock => block.type === "tool_use",
   );
@@ -279,15 +299,16 @@ export async function generateWeekSuggestions(
 
   const parsed = WeekSuggestionSchema.safeParse(toolUse.input);
   if (!parsed.success) {
-    // Same reasoning as generateRecipeSuggestion's log above — stringify
-    // explicitly so the issue list and the raw (up to 21-recipe) payload
-    // actually show up in Vercel's logs instead of collapsing to
-    // "[Object]" past Node's default inspect depth.
+    // Same reasoning as generateRecipeSuggestion's log above — one joined
+    // plain string so neither Node's inspect depth nor a log viewer's own
+    // object-collapsing UI can hide the issue list or the raw payload.
     console.error(
-      "[suggest-recipe] fill_week response failed validation:",
-      JSON.stringify(parsed.error.issues, null, 2),
-      "\nRaw input:",
-      JSON.stringify(toolUse.input, null, 2),
+      [
+        "[suggest-recipe] fill_week response failed validation:",
+        JSON.stringify(parsed.error.issues, null, 2),
+        "Raw input:",
+        JSON.stringify(toolUse.input, null, 2),
+      ].join("\n"),
     );
     throw new RecipeSuggestionUpstreamError(
       "Got a malformed batch of recipe suggestions. Try again.",
