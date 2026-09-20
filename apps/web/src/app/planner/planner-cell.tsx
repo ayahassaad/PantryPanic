@@ -42,6 +42,13 @@ const UNDO_WINDOW_MS = 5000;
 const MIN_SERVINGS = 1;
 const MAX_SERVINGS = 20;
 
+// One shared height for all three cell states (filled, empty, pending
+// removal) so a row stays even regardless of which state each day's cell
+// is in — same reasoning as the old fixed 92px, just taller now that the
+// grid has more page to work with (see the wider max-w on the planner
+// page itself).
+const CELL_HEIGHT = "h-[150px]";
+
 interface PlannerCellProps {
   dateISO: string;
   slot: MealSlot;
@@ -208,7 +215,7 @@ export function PlannerCell({
   // click.
   if (pendingRemoval) {
     return (
-      <div className="flex h-[92px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-ink-faint p-2 text-center">
+      <div className={`flex ${CELL_HEIGHT} flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-ink-faint p-2 text-center`}>
         <span className="text-[11px] font-semibold text-ink-soft">Removed</span>
         <button
           type="button"
@@ -224,26 +231,28 @@ export function PlannerCell({
   // Fixed height (not min-height) so a filled cell is exactly the same
   // size as an empty "+ Add" one — a long recipe title used to push the
   // box taller than its neighbors and throw off the whole row. The title
-  // is clamped to 2 lines instead, and the box itself is now the link to
+  // is clamped to 3 lines instead, and the box itself is now the link to
   // the recipe (tap/click anywhere on the title for the full details and
-  // instructions) with a servings stepper underneath and a small "x" in
-  // the corner to remove it.
+  // instructions), flex-col + justify-between so the servings stepper
+  // sits pinned near the bottom rather than floating right under a short
+  // title with a dead gap below it, and a small "x" in the corner to
+  // remove it.
   if (entry) {
     return (
       <div
-        className={`relative h-[92px] overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass}`}
+        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass}`}
       >
         {entry.recipeId ? (
           <Link
             href={`/recipes/${entry.recipeId}`}
-            className={`flex flex-col pr-5 transition hover:brightness-110 ${textClass}`}
+            className={`flex flex-1 flex-col pr-5 transition hover:brightness-110 ${textClass}`}
           >
-            <span className="line-clamp-2 font-display text-xs font-semibold leading-snug">
+            <span className="line-clamp-3 font-display text-sm font-semibold leading-snug">
               {entry.recipeTitle}
             </span>
           </Link>
         ) : (
-          <div className={`pr-5 ${textClass}`}>
+          <div className={`flex-1 pr-5 ${textClass}`}>
             <span className="text-xs" style={{ opacity: 0.75 }}>
               Recipe removed
             </span>
@@ -251,13 +260,15 @@ export function PlannerCell({
         )}
 
         {/* Small pill: numeral only (the "serving(s)" word is dropped
-            from the visible label — there's no room for it at this
-            width — but kept for screen readers via the sr-only span and
-            the buttons' aria-labels). Border, buttons and numeral are
-            all plain text-ink/border-ink (not the per-slot textClass)
-            so the stepper reads the same solid black on every meal
-            slot's color, matching the card's own black outline. */}
-        <div className="mt-1 flex w-fit items-center gap-1 rounded-full border border-ink px-1.5 py-0.5 text-ink">
+            from the visible label — the box is still narrow even though
+            it's now taller — but kept for screen readers via the
+            sr-only span and the buttons' aria-labels). Border, buttons
+            and numeral are all plain text-ink/border-ink (not the
+            per-slot textClass) so the stepper reads the same solid
+            black on every meal slot's color, matching the card's own
+            black outline. mt-auto pins it to the bottom of the taller
+            card instead of sitting right under the title. */}
+        <div className="mt-auto flex w-fit items-center gap-1 rounded-full border border-ink px-1.5 py-0.5 text-ink">
           <button
             type="button"
             onClick={() => adjustServings(-1)}
@@ -307,7 +318,7 @@ export function PlannerCell({
 
   return (
     <>
-      <div className="flex h-[92px] flex-col justify-center gap-1 overflow-hidden rounded-xl border-2 border-dashed border-ink-faint p-2">
+      <div className={`flex ${CELL_HEIGHT} flex-col justify-center gap-1.5 overflow-hidden rounded-xl border-2 border-dashed border-ink-faint p-2.5`}>
         {hasRecipes ? (
           <>
             <input
@@ -317,14 +328,14 @@ export function PlannerCell({
               placeholder="Search recipes…"
               aria-label="Search recipes"
               disabled={isAssigning}
-              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1.5 py-0.5 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
+              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-2 py-1.5 text-xs text-ink outline-none focus:border-ink disabled:opacity-60"
             />
             <select
               value=""
               onChange={(e) => handleAssign(e.target.value)}
               disabled={isAssigning}
               aria-label="Choose a recipe"
-              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1 py-0.5 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
+              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1.5 py-1.5 text-xs text-ink outline-none focus:border-ink disabled:opacity-60"
             >
               <option value="" disabled>
                 {isAssigning ? "Adding…" : filteredRecipes.length === 0 ? "No matches" : "+ Add"}
@@ -335,21 +346,19 @@ export function PlannerCell({
                 </option>
               ))}
             </select>
-            {assignError ? (
+            {/* There's room for this alongside the error now that the
+                cell is taller — no longer an either/or. Opens straight
+                to the "type it in" tab; AI is one click away from
+                there. */}
+            <button
+              type="button"
+              onClick={() => setModalTab("new")}
+              className="text-left text-[10px] font-bold leading-tight text-ink-faint underline underline-offset-2 transition hover:text-ink"
+            >
+              or write one / ask AI
+            </button>
+            {assignError && (
               <p className="text-[10px] font-bold leading-tight text-tomato-600">{assignError}</p>
-            ) : (
-              // Only shown when there's no error to make room for — the
-              // whole point of this row is "or make one from scratch",
-              // which matters most when a search above just came up
-              // empty. Opens straight to the "type it in" tab; AI is one
-              // click away from there.
-              <button
-                type="button"
-                onClick={() => setModalTab("new")}
-                className="text-left text-[9px] font-bold leading-tight text-ink-faint underline underline-offset-2 transition hover:text-ink"
-              >
-                or write one / ask AI
-              </button>
             )}
           </>
         ) : (
@@ -357,7 +366,7 @@ export function PlannerCell({
             type="button"
             onClick={() => setModalTab("new")}
             aria-label="Add a recipe"
-            className="mx-auto text-2xl text-ink-faint transition hover:text-ink"
+            className="mx-auto text-4xl text-ink-faint transition hover:text-ink"
           >
             +
           </button>
