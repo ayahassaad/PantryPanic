@@ -195,6 +195,18 @@ export default async function PlannerPage({
             {filledSlots} of {totalSlots} meals planned
           </p>
         </div>
+
+        {/* Moved up from below the grid so it sits between the week
+            title and the nav buttons instead of trailing at the very
+            bottom of the page, where it was easy to miss. Same flex row
+            as those two (justify-between), so on a wide screen it reads
+            as a natural middle column; on a narrow one it just wraps
+            onto its own line like the button group already did. */}
+        <div className="flex max-w-sm flex-1 items-center gap-3 rounded-2xl bg-cream-deep px-4 py-3">
+          <Mascot className="h-10 w-9 flex-none" />
+          <RotatingTip tips={PLANNER_TIPS} startIndex={tipStartIndex} />
+        </div>
+
         <div className="flex flex-none flex-wrap items-center gap-2.5">
           <Link
             href={`/planner?week=${prevWeekISO}`}
@@ -341,11 +353,6 @@ export default async function PlannerPage({
         slotStyles={SLOT_STYLES}
         defaultDateISO={mobileDefaultDateISO}
       />
-
-      <div className="mt-8 flex max-w-xl items-center gap-4 rounded-2xl bg-cream-deep px-5 py-4">
-        <Mascot className="h-[50px] w-[46px] flex-none" />
-        <RotatingTip tips={PLANNER_TIPS} startIndex={tipStartIndex} />
-      </div>
     </main>
   );
 }
