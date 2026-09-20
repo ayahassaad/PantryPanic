@@ -232,8 +232,15 @@ export function PlannerCell({
           </div>
         )}
 
+        {/* Same corner-radius recipe as the card itself
+            (rounded-[12px_15px_11px_14px] on the entry div above) and
+            the same border-ink used for the card's own outline — so this
+            reads as a smaller version of the card's shape, not an
+            unrelated pill dropped on top of it. w-full (not w-fit) plus
+            whitespace-nowrap on the count keeps "1 serving" on one line
+            instead of wrapping the number away from its label. */}
         <div
-          className={`mt-1 flex w-fit items-center gap-1.5 rounded-full border border-current px-1.5 py-0.5 ${textClass}`}
+          className={`mt-1 flex w-full items-center justify-between gap-1 rounded-[12px_15px_11px_14px] border-2 border-ink px-1.5 py-0.5 ${textClass}`}
           style={{ opacity: 0.85 }}
         >
           <button
@@ -241,11 +248,11 @@ export function PlannerCell({
             onClick={() => adjustServings(-1)}
             disabled={entry.servings <= MIN_SERVINGS}
             aria-label="Fewer servings"
-            className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
+            className="flex-none text-[11px] font-bold leading-none transition hover:opacity-60 disabled:opacity-40"
           >
             &minus;
           </button>
-          <span className="text-[10px] font-semibold tabular-nums">
+          <span className="whitespace-nowrap text-[9px] font-semibold tabular-nums">
             {entry.servings} {entry.servings === 1 ? "serving" : "servings"}
           </span>
           <button
@@ -253,7 +260,7 @@ export function PlannerCell({
             onClick={() => adjustServings(1)}
             disabled={entry.servings >= MAX_SERVINGS}
             aria-label="More servings"
-            className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[11px] font-bold leading-none transition hover:bg-black/10 disabled:opacity-40"
+            className="flex-none text-[11px] font-bold leading-none transition hover:opacity-60 disabled:opacity-40"
           >
             +
           </button>
