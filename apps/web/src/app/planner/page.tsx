@@ -8,6 +8,17 @@ import { PlannerCell } from "./planner-cell";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Rotates by day of week, same trick as the login page's tagline — no
+// client-side randomness (which would risk a hydration mismatch on this
+// server-rendered page), just a deterministic pick that changes daily.
+const PLANNER_TIPS = [
+  "Weekends still empty? No panic: the shopping list only pulls what's actually planned.",
+  "Every recipe you plan is one less “what's for dinner” panic later.",
+  "Tap a box, see the recipe. It's basically magic (it's not, it's just good UX).",
+  "A plan a day keeps the takeout away.",
+  "Changed your mind? Just pick a new recipe — it swaps right in.",
+];
+
 // One accent per meal slot, echoed from the design mockup (breakfast =
 // citrus, lunch = leaf, dinner = tomato). citrus-400 is light enough that
 // dark ink reads better on it than cream; leaf/tomato are dark enough to
@@ -82,6 +93,7 @@ export default async function PlannerPage({
   }
 
   const hasRecipes = Boolean(recipes && recipes.length > 0);
+  const tip = PLANNER_TIPS[new Date().getDay() % PLANNER_TIPS.length] ?? PLANNER_TIPS[0];
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8 sm:px-10">
@@ -207,10 +219,7 @@ export default async function PlannerPage({
 
       <div className="mt-8 flex max-w-xl items-center gap-4 rounded-2xl bg-cream-deep px-5 py-4">
         <Mascot className="h-[50px] w-[46px] flex-none" />
-        <p className="text-sm font-bold text-ink">
-          Weekends still empty? No panic: the shopping list only pulls what&apos;s
-          actually planned.
-        </p>
+        <p className="text-sm font-bold text-ink">{tip}</p>
       </div>
     </main>
   );
