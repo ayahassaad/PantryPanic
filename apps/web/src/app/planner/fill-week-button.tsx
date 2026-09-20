@@ -49,17 +49,19 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-// The picks themselves happen on the grid now — click a meal box to mark
-// it (see the toggle in planner-cell.tsx), up to MAX_SELECTED_SLOTS at
-// once. This button just surfaces the current picks (as removable chips,
-// so a stray one can be dropped without leaving the popup), collects the
-// optional pantry + constraints, and submits. Unlike RecipeModal (which
-// updates a single PlannerCell it's nested under), a fill can touch
-// several cells across the grid at once, so on success it calls
-// router.refresh() instead of lifting state anywhere — see the effect in
-// planner-cell.tsx that picks that refresh up.
+// Two very different jobs depending on isSelecting (see
+// fill-week-selection.tsx): while off, this is a single button whose
+// only purpose is to turn picking mode ON — the grid itself ignores
+// clicks until then, so this really is the one door in. While on, it's
+// a small Cancel/Continue toolbar instead: Cancel drops out of picking
+// mode entirely, Continue opens the confirm popup (picks shown as
+// removable chips, plus optional pantry + constraints) and submits.
+// Unlike RecipeModal (which updates a single PlannerCell it's nested
+// under), a fill can touch several cells across the grid at once, so on
+// success it calls router.refresh() instead of lifting state anywhere —
+// see the effect in planner-cell.tsx that picks that refresh up.
 export function FillWeekButton({ weekStartISO }: FillWeekButtonProps) {
-  const { selected, toggle, clear } = useFillWeekSelection();
+  const { selected, isSelecting, toggle, startSelecting, stopSelecting } = useFillWeekSelection();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -96,7 +98,7 @@ export function FillWeekButton({ weekStartISO }: FillWeekButtonProps) {
           return;
         }
         setOpen(false);
-        clear();
+        stopSelecting();
         router.refresh();
       } catch (err) {
         if (isRedirectError(err)) {
@@ -107,21 +109,43 @@ export function FillWeekButton({ weekStartISO }: FillWeekButtonProps) {
     });
   }
 
-  return (
-    <>
+  if (!isSelecting) {
+    return (
       <button
         type="button"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
-        disabled={selectedKeys.length === 0}
-        className="wobble-btn border-2 border-ink bg-blueberry-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={startSelecting}
+        className="wobble-btn border-2 border-ink bg-blueberry-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105"
       >
-        {selectedKeys.length > 0
-          ? `✨ Fill ${selectedKeys.length} meal${selectedKeys.length === 1 ? "" : "s"} with AI`
-          : "✨ Fill week with AI"}
+        ✨ Fill week with AI
       </button>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <span className="wobble-btn border-2 border-dashed border-blueberry-400 bg-cream-card px-3 py-2 font-display text-xs font-semibold text-blueberry-600">
+          Tap meals below · {selectedKeys.length}/{MAX_SELECTED_SLOTS}
+        </span>
+        <button
+          type="button"
+          onClick={stopSelecting}
+          className="wobble-btn border-2 border-ink bg-cream-card px-3 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setOpen(true);
+          }}
+          disabled={selectedKeys.length === 0}
+          className="wobble-btn border-2 border-ink bg-blueberry-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Continue{selectedKeys.length > 0 ? ` (${selectedKeys.length})` : ""}
+        </button>
+      </div>
 
       {open && (
         <div
@@ -166,7 +190,7 @@ export function FillWeekButton({ weekStartISO }: FillWeekButtonProps) {
                 </div>
                 {selectedKeys.length === 0 ? (
                   <p className="text-sm text-ink-faint">
-                    Nothing picked. Close this and click a meal box on the planner to mark it.
+                    Nothing picked. Close this and tap a meal box on the planner to mark it.
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">

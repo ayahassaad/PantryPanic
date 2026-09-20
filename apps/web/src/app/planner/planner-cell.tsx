@@ -93,7 +93,7 @@ export function PlannerCell({
   const [modalOpen, setModalOpen] = useState(false);
   const [, startTransition] = useTransition();
   const removalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isSelected, toggle: toggleFillSelection } = useFillWeekSelection();
+  const { isSelected, isSelecting, toggle: toggleFillSelection } = useFillWeekSelection();
   const selectedForFill = isSelected(dateISO, slot);
 
   // Every other update to this cell (add/remove/servings) is done
@@ -302,16 +302,25 @@ export function PlannerCell({
   // since there's nothing to pick from yet.
   //
   // The rest of the box (anywhere but that button) doubles as a toggle
-  // for "Fill week with AI" — click it to mark this meal as one to ask
-  // AI for, click again to unmark. The button stops the click from
-  // bubbling up so opening the modal and toggling selection stay two
-  // separate gestures instead of both firing at once.
+  // for "Fill week with AI" — but only once picking mode is on
+  // (isSelecting, turned on by pressing that button — see
+  // fill-week-selection.tsx). Until then this click does nothing, same
+  // as the plain dashed box before this feature existed; toggle() itself
+  // also no-ops while not selecting, so this is a style-only gate, not
+  // the only thing preventing an accidental pick. The "+ Add meal"
+  // button stops its own click from bubbling up so opening the modal and
+  // toggling selection stay two separate gestures instead of both firing
+  // at once.
   return (
     <>
       <div
         onClick={() => toggleFillSelection(dateISO, slot)}
-        className={`relative flex ${CELL_HEIGHT} cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${
-          selectedForFill ? "border-blueberry-400 bg-blueberry-50" : "border-dashed border-ink-faint"
+        className={`relative flex ${CELL_HEIGHT} items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${
+          selectedForFill
+            ? "cursor-pointer border-blueberry-400 bg-blueberry-50"
+            : isSelecting
+              ? "cursor-pointer border-dashed border-blueberry-400/40 hover:border-blueberry-400 hover:bg-blueberry-50"
+              : "border-dashed border-ink-faint"
         }`}
       >
         {selectedForFill && (
