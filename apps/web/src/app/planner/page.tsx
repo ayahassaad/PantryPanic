@@ -131,6 +131,22 @@ export default async function PlannerPage({
     entryByCell.set(`${entry.plan_date}_${entry.meal_slot}`, entry);
   }
 
+  // Every (day, slot) pair with nothing planned yet — this is what
+  // FillWeekButton offers as checkboxes, so someone can ask AI to fill
+  // just a few specific meals instead of always the whole week. Built
+  // day-major/slot-major (Mon breakfast, Mon lunch, Mon dinner, Tue
+  // breakfast, ...) so "the first 8" reads as a sensible chronological
+  // default rather than an arbitrary subset.
+  const emptySlots: Array<{ dateISO: string; mealSlot: MealSlot; dayLabel: string; dayNumber: number }> = [];
+  weekDays.forEach((day, i) => {
+    const dateISO = toISODate(day);
+    for (const slot of MEAL_SLOTS) {
+      if (!entryByCell.has(`${dateISO}_${slot}`)) {
+        emptySlots.push({ dateISO, mealSlot: slot, dayLabel: DAY_LABELS[i] ?? "", dayNumber: day.getUTCDate() });
+      }
+    }
+  });
+
   function toEntryView(entry: PlannerEntry | undefined): PlannerEntryView | null {
     if (!entry) {
       return null;
@@ -227,7 +243,7 @@ export default async function PlannerPage({
           >
             Next &rarr;
           </Link>
-          <FillWeekButton weekStartISO={weekStartISO} disabled={filledSlots === totalSlots} />
+          <FillWeekButton weekStartISO={weekStartISO} emptySlots={emptySlots} />
           <CopyWeekButton
             weekStartISO={weekStartISO}
             nextWeekISO={nextWeekISO}

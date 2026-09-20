@@ -1,16 +1,27 @@
 "use server";
 
-// Backs the "Fill week with AI" button (see fill-week-button.tsx). One
-// Claude call returns a whole batch of recipes — one per currently-empty
-// slot in the given week — which then all get saved to the library and
-// assigned in the same pass. See the comment on FILL_WEEK_TOOL in
-// lib/anthropic/suggest-recipe.ts for why this is a single batched call
-// rather than looping the single-suggestion action once per empty box.
+// Backs the "Fill week with AI" button (see fill-week-button.tsx). The
+// user picks up to MAX_SELECTED_SLOTS empty meals in the popup; one
+// Claude call returns one recipe per picked slot, which then all get
+// saved to the library and assigned in the same pass. See the comment on
+// FILL_WEEK_TOOL in lib/anthropic/suggest-recipe.ts for why this is
+// batched at all rather than looping the single-suggestion action once
+// per slot.
+//
+// The MAX_SELECTED_SLOTS cap isn't arbitrary: asking for a full 21-slot
+// empty week's worth of recipes (title + description + a real ingredient
+// list + steps, each) in one response reliably ran past the model's
+// output budget and came back truncated — Anthropic hands back an
+// unparseable partial tool call in that case, which surfaced here as a
+// confusing "malformed batch" error. Capping how much one click can ask
+// for at once (rather than silently splitting it into several Claude
+// calls behind the scenes) keeps this simple: one click really is one
+// call, and it reliably finishes.
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
+import { type MealSlot } from "@pantry-panic/shared";
 import { addDays, toISODate } from "@/lib/week";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -21,14 +32,28 @@ import {
 
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+// Keep in sync with the same-named cap in fill-week-button.tsx (that one
+// keeps the UI from offering more than this; this is what actually
+// enforces it — never trust the client alone). See the top-of-file
+// comment for why this number exists at all.
+const MAX_SELECTED_SLOTS = 8;
+
+const SLOT_KEY_PATTERN = /^(\d{4}-\d{2}-\d{2})_(breakfast|lunch|dinner)$/;
+
 const FillWeekSchema = z.object({
   weekStartISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  // Each entry is "YYYY-MM-DD_mealSlot", exactly what slotKey() in
+  // fill-week-button.tsx builds for each checkbox.
+  selectedSlots: z
+    .array(z.string().regex(SLOT_KEY_PATTERN))
+    .min(1, "Pick at least one meal to fill.")
+    .max(MAX_SELECTED_SLOTS, `Pick at most ${MAX_SELECTED_SLOTS} meals at a time.`),
   ingredients: z.array(z.string().trim().min(1).max(80)).max(60),
   constraints: z.string().trim().max(300).optional(),
 });
 
 // Same shared counter suggestRecipe/suggestRecipeAndAssign use, and the
-// same limit — one "fill the week" click is exactly one Claude call (see
+// same limit — one "fill" click is exactly one Claude call (see
 // generateWeekSuggestions), same as one single-recipe ask, so it costs
 // the same 1 request against the daily budget rather than needing its
 // own separate cap.
@@ -51,22 +76,31 @@ export async function fillWeekWithAi(
   const ingredients = ingredientsRaw.split("\n").map((line) => line.trim()).filter(Boolean);
   const constraintsRaw = ((formData.get("constraints") as string) ?? "").trim();
 
+  let selectedSlotsRaw: unknown;
+  try {
+    selectedSlotsRaw = JSON.parse((formData.get("selectedSlots") as string) ?? "[]");
+  } catch {
+    return { error: "Couldn't tell which meals to fill." };
+  }
+
   const parsed = FillWeekSchema.safeParse({
     weekStartISO: formData.get("weekStartISO"),
+    selectedSlots: selectedSlotsRaw,
     ingredients,
     constraints: constraintsRaw || undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Couldn't tell which week this was for." };
+    return { error: parsed.error.issues[0]?.message ?? "Couldn't tell which meals to fill." };
   }
   const { weekStartISO } = parsed.data;
 
   const weekStart = new Date(`${weekStartISO}T00:00:00Z`);
   const weekEndISO = toISODate(addDays(weekStart, 6));
 
-  // Which of this week's 21 (day, slot) pairs are already planned — the
-  // fill only ever targets what's left blank, never overwrites a meal
-  // that's already there.
+  // Re-check what's actually planned right now — the popup's checkbox
+  // list was built from whatever page.tsx last rendered, which can be
+  // stale (another tab, or a meal added since this popup opened). Never
+  // trust the client's word for which slots are safe to overwrite.
   const { data: existingEntries, error: fetchError } = await supabase
     .from("meal_plan_entries")
     .select("plan_date, meal_slot")
@@ -81,18 +115,29 @@ export async function fillWeekWithAi(
 
   const filledCells = new Set((existingEntries ?? []).map((e) => `${e.plan_date}_${e.meal_slot}`));
 
-  const emptySlots: Array<{ dateISO: string; mealSlot: MealSlot; label: string }> = [];
-  for (let i = 0; i < 7; i++) {
-    const dateISO = toISODate(addDays(weekStart, i));
-    for (const mealSlot of MEAL_SLOTS) {
-      if (!filledCells.has(`${dateISO}_${mealSlot}`)) {
-        emptySlots.push({ dateISO, mealSlot, label: `${WEEKDAY_NAMES[i]} ${mealSlot}` });
-      }
-    }
-  }
+  const targetSlots = parsed.data.selectedSlots
+    .map((key) => {
+      const match = key.match(SLOT_KEY_PATTERN);
+      if (!match) return null;
+      const [, dateISO, mealSlot] = match as [string, string, MealSlot];
+      // Which weekday this date falls on, spelled out for the prompt
+      // ("Monday breakfast") — computed relative to weekStart rather than
+      // re-parsing with a day-name library, since this is just a label.
+      const dayIndex = Math.round(
+        (new Date(`${dateISO}T00:00:00Z`).getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      const dayName = WEEKDAY_NAMES[dayIndex] ?? dateISO;
+      return { dateISO, mealSlot, label: `${dayName} ${mealSlot}` };
+    })
+    .filter((slot): slot is { dateISO: string; mealSlot: MealSlot; label: string } => slot !== null)
+    // Drop anything that's not actually empty any more, or that fell
+    // outside this week's range (dayIndex out of 0-6) — both defensive,
+    // neither should happen from the UI itself.
+    .filter((slot) => !filledCells.has(`${slot.dateISO}_${slot.mealSlot}`))
+    .filter((slot) => slot.dateISO >= weekStartISO && slot.dateISO <= weekEndISO);
 
-  if (emptySlots.length === 0) {
-    return { error: "This week's already fully planned — nothing empty to fill." };
+  if (targetSlots.length === 0) {
+    return { error: "Those meals are already planned — refresh and try again." };
   }
 
   const { data: profile } = await supabase
@@ -129,7 +174,7 @@ export async function fillWeekWithAi(
   let result: Awaited<ReturnType<typeof generateWeekSuggestions>>;
   try {
     result = await generateWeekSuggestions({
-      slotLabels: emptySlots.map((s) => s.label),
+      slotLabels: targetSlots.map((s) => s.label),
       ingredients: parsed.data.ingredients,
       constraints: parsed.data.constraints,
       dietaryPreferences: profile?.dietary_preferences?.length ? profile.dietary_preferences : undefined,
@@ -143,15 +188,15 @@ export async function fillWeekWithAi(
         ? "Recipe suggestions aren't set up yet. Ask whoever runs this app to add an Anthropic API key."
         : error instanceof RecipeSuggestionUpstreamError
           ? error.message
-          : "Couldn't fill the week. Try again.";
+          : "Couldn't fill those meals. Try again.";
     return { error: message };
   }
 
-  // Defensive zip: the model is asked for exactly emptySlots.length
+  // Defensive zip: the model is asked for exactly targetSlots.length
   // recipes and usually delivers, but never assume — pair up only as
   // many as actually came back, by position.
-  const pairs: Array<{ slot: (typeof emptySlots)[number]; recipe: (typeof result.recipes)[number] }> = [];
-  emptySlots.forEach((slot, i) => {
+  const pairs: Array<{ slot: (typeof targetSlots)[number]; recipe: (typeof result.recipes)[number] }> = [];
+  targetSlots.forEach((slot, i) => {
     const recipe = result.recipes[i];
     if (recipe) {
       pairs.push({ slot, recipe });
@@ -223,5 +268,5 @@ export async function fillWeekWithAi(
   }
 
   revalidatePath("/planner");
-  return { filledCount: pairs.length, requestedCount: emptySlots.length };
+  return { filledCount: pairs.length, requestedCount: targetSlots.length };
 }
