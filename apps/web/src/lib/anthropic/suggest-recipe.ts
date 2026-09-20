@@ -133,6 +133,17 @@ export async function generateRecipeSuggestion(
 
   const parsed = RecipeSuggestionSchema.safeParse(toolUse.input);
   if (!parsed.success) {
+    // Node's default console depth hides anything nested more than two
+    // levels deep — printed as "[Object]" — which is exactly where the
+    // useful part of a Zod error lives (the issue list, and the raw value
+    // that failed). Stringify explicitly so it actually shows up in
+    // Vercel's logs instead of a dead end.
+    console.error(
+      "[suggest-recipe] suggest_recipe response failed validation:",
+      JSON.stringify(parsed.error.issues, null, 2),
+      "\nRaw input:",
+      JSON.stringify(toolUse.input, null, 2),
+    );
     throw new RecipeSuggestionUpstreamError(
       "Got a malformed recipe suggestion. Try again.",
       { cause: parsed.error },
@@ -268,6 +279,16 @@ export async function generateWeekSuggestions(
 
   const parsed = WeekSuggestionSchema.safeParse(toolUse.input);
   if (!parsed.success) {
+    // Same reasoning as generateRecipeSuggestion's log above — stringify
+    // explicitly so the issue list and the raw (up to 21-recipe) payload
+    // actually show up in Vercel's logs instead of collapsing to
+    // "[Object]" past Node's default inspect depth.
+    console.error(
+      "[suggest-recipe] fill_week response failed validation:",
+      JSON.stringify(parsed.error.issues, null, 2),
+      "\nRaw input:",
+      JSON.stringify(toolUse.input, null, 2),
+    );
     throw new RecipeSuggestionUpstreamError(
       "Got a malformed batch of recipe suggestions. Try again.",
       { cause: parsed.error },
