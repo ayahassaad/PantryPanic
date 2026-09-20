@@ -175,7 +175,7 @@ export default async function PlannerPage({
     mobileDays.find((d) => d.isToday)?.dateISO ?? mobileDays[0]?.dateISO ?? weekStartISO;
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-8 sm:px-10">
+    <main className="mx-auto min-h-screen max-w-[1600px] px-6 py-8 sm:px-10">
       <Link
         href="/dashboard"
         className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"

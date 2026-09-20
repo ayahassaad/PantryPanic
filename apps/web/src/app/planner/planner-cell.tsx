@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { MealSlot } from "@pantry-panic/shared";
 import { assignMealPlanEntry, removeMealPlanEntry, updateMealPlanServings } from "./actions";
+import { RecipeModal } from "./recipe-modal";
+import type { AssignedEntry } from "./recipe-actions";
 
 export interface RecipeOption {
   id: string;
@@ -69,6 +71,12 @@ export function PlannerCell({
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  // "new" / "ai" here doubles as "the modal is open, on this tab" — null
+  // means closed. Opened from the empty-cell state below (either the
+  // small "or…" link when there are already recipes to search, or the
+  // big "+" itself when the library is empty and there's nothing to
+  // search yet).
+  const [modalTab, setModalTab] = useState<"new" | "ai" | null>(null);
   const [, startTransition] = useTransition();
   const removalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -184,6 +192,16 @@ export function PlannerCell({
     });
   }
 
+  // Shared by both RecipeModal tabs (see recipe-modal.tsx) — it already
+  // hands back exactly the shape PlannerEntryView needs (id, recipeId,
+  // recipeTitle, servings), so filling the cell from a freshly-created
+  // recipe works the same as picking an existing one from the dropdown.
+  function handleCreated(created: AssignedEntry) {
+    setEntry(created);
+    setModalTab(null);
+    setQuery("");
+  }
+
   // Reversible removal: while pendingRemoval is set, the cell shows an
   // "Undo" chip instead of either its filled or empty state — the actual
   // delete doesn't reach the server until UNDO_WINDOW_MS passes with no
@@ -288,41 +306,73 @@ export function PlannerCell({
     : recipes;
 
   return (
-    <div className="flex h-[92px] flex-col justify-center gap-1 rounded-xl border-2 border-dashed border-ink-faint p-2">
-      {hasRecipes ? (
-        <>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search recipes…"
-            aria-label="Search recipes"
-            disabled={isAssigning}
-            className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1.5 py-1 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
-          />
-          <select
-            value=""
-            onChange={(e) => handleAssign(e.target.value)}
-            disabled={isAssigning}
-            aria-label="Choose a recipe"
-            className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1 py-1 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
-          >
-            <option value="" disabled>
-              {isAssigning ? "Adding…" : filteredRecipes.length === 0 ? "No matches" : "+ Add"}
-            </option>
-            {filteredRecipes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.isFavorite ? `★ ${r.title}` : r.title}
+    <>
+      <div className="flex h-[92px] flex-col justify-center gap-1 overflow-hidden rounded-xl border-2 border-dashed border-ink-faint p-2">
+        {hasRecipes ? (
+          <>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search recipes…"
+              aria-label="Search recipes"
+              disabled={isAssigning}
+              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1.5 py-0.5 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
+            />
+            <select
+              value=""
+              onChange={(e) => handleAssign(e.target.value)}
+              disabled={isAssigning}
+              aria-label="Choose a recipe"
+              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1 py-0.5 text-[11px] text-ink outline-none focus:border-ink disabled:opacity-60"
+            >
+              <option value="" disabled>
+                {isAssigning ? "Adding…" : filteredRecipes.length === 0 ? "No matches" : "+ Add"}
               </option>
-            ))}
-          </select>
-          {assignError && (
-            <p className="text-[10px] font-bold leading-tight text-tomato-600">{assignError}</p>
-          )}
-        </>
-      ) : (
-        <span className="text-2xl text-ink-faint">+</span>
+              {filteredRecipes.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.isFavorite ? `★ ${r.title}` : r.title}
+                </option>
+              ))}
+            </select>
+            {assignError ? (
+              <p className="text-[10px] font-bold leading-tight text-tomato-600">{assignError}</p>
+            ) : (
+              // Only shown when there's no error to make room for — the
+              // whole point of this row is "or make one from scratch",
+              // which matters most when a search above just came up
+              // empty. Opens straight to the "type it in" tab; AI is one
+              // click away from there.
+              <button
+                type="button"
+                onClick={() => setModalTab("new")}
+                className="text-left text-[9px] font-bold leading-tight text-ink-faint underline underline-offset-2 transition hover:text-ink"
+              >
+                or write one / ask AI
+              </button>
+            )}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setModalTab("new")}
+            aria-label="Add a recipe"
+            className="mx-auto text-2xl text-ink-faint transition hover:text-ink"
+          >
+            +
+          </button>
+        )}
+      </div>
+
+      {modalTab && (
+        <RecipeModal
+          dateISO={dateISO}
+          slot={slot}
+          defaultTab={modalTab}
+          onClose={() => setModalTab(null)}
+          onCreated={handleCreated}
+        />
       )}
-    </div>
+    </>
   );
 }
