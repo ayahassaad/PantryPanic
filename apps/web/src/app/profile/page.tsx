@@ -49,9 +49,6 @@ export default async function ProfilePage({
         &larr; Dashboard
       </Link>
 
-      <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-citrus-600">
-        Your profile
-      </p>
       <h1 className="-rotate-[0.4deg] mb-2 font-display text-3xl font-bold text-ink">
         Preferences
       </h1>
@@ -189,9 +186,6 @@ export default async function ProfilePage({
       )}
 
       <div className="mt-10 border-t-2 border-dashed border-ink-faint pt-8">
-        <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-blueberry-600">
-          Account
-        </p>
         <h2 className="mb-5 font-display text-xl font-bold text-ink">
           Email, password &amp; sign-in
         </h2>
@@ -257,9 +251,6 @@ export default async function ProfilePage({
       </div>
 
       <div className="mt-10 border-t-2 border-dashed border-ink-faint pt-8">
-        <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
-          Danger zone
-        </p>
         <h2 className="mb-3 font-display text-xl font-bold text-ink">Delete account</h2>
         <p className="mb-4 max-w-md text-sm text-ink-soft">
           Permanently deletes your profile, recipes, meal plans, shopping lists, and
