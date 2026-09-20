@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import {
   INGREDIENT_CATEGORIES,
   RecipeSuggestionSchema,
@@ -13,54 +14,58 @@ const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
 export class MissingApiKeyError extends Error {}
 export class RecipeSuggestionUpstreamError extends Error {}
 
+// Shared by both tool schemas below (single suggestion and the
+// fill-a-week batch) — one recipe's shape, described once. Must stay in
+// sync with RecipeSuggestionSchema in packages/shared.
+const RECIPE_ITEM_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    title: { type: "string", description: "Short, appetizing recipe name." },
+    description: {
+      type: "string",
+      description: "One or two sentence description of the dish.",
+    },
+    ingredients: {
+      type: "array",
+      description:
+        "Every ingredient the recipe needs — both from the user's pantry list and anything extra.",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "e.g. \"garlic\", not \"2 cloves garlic\"." },
+          quantity: {
+            type: "number",
+            description:
+              "A countable/measurable amount, e.g. 2 for \"2 cloves garlic\". Omit entirely for things like \"salt to taste\" that don't have one.",
+          },
+          unit: {
+            type: "string",
+            description: "e.g. \"cloves\", \"cups\", \"g\". Omit if quantity is omitted.",
+          },
+          category: {
+            type: "string",
+            enum: [...INGREDIENT_CATEGORIES],
+            description: "Which grocery aisle this ingredient belongs in.",
+          },
+        },
+        required: ["name", "category"],
+      },
+    },
+    steps: {
+      type: "array",
+      items: { type: "string" },
+      description: "Ordered cooking steps.",
+    },
+  },
+  required: ["title", "description", "ingredients", "steps"],
+};
+
 // The response schema handed to Claude as a tool call, so we get back
-// well-formed JSON instead of having to parse it out of prose. This must
-// stay in sync with RecipeSuggestionSchema in packages/shared.
+// well-formed JSON instead of having to parse it out of prose.
 const SUGGEST_RECIPE_TOOL: Anthropic.Tool = {
   name: "suggest_recipe",
   description: "Return a single recipe suggestion as structured data.",
-  input_schema: {
-    type: "object",
-    properties: {
-      title: { type: "string", description: "Short, appetizing recipe name." },
-      description: {
-        type: "string",
-        description: "One or two sentence description of the dish.",
-      },
-      ingredients: {
-        type: "array",
-        description:
-          "Every ingredient the recipe needs — both from the user's pantry list and anything extra.",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "e.g. \"garlic\", not \"2 cloves garlic\"." },
-            quantity: {
-              type: "number",
-              description:
-                "A countable/measurable amount, e.g. 2 for \"2 cloves garlic\". Omit entirely for things like \"salt to taste\" that don't have one.",
-            },
-            unit: {
-              type: "string",
-              description: "e.g. \"cloves\", \"cups\", \"g\". Omit if quantity is omitted.",
-            },
-            category: {
-              type: "string",
-              enum: [...INGREDIENT_CATEGORIES],
-              description: "Which grocery aisle this ingredient belongs in.",
-            },
-          },
-          required: ["name", "category"],
-        },
-      },
-      steps: {
-        type: "array",
-        items: { type: "string" },
-        description: "Ordered cooking steps.",
-      },
-    },
-    required: ["title", "description", "ingredients", "steps"],
-  },
+  input_schema: RECIPE_ITEM_SCHEMA,
 };
 
 function buildPrompt(input: RecipeSuggestionInput): string {
@@ -68,18 +73,6 @@ function buildPrompt(input: RecipeSuggestionInput): string {
     `Pantry ingredients on hand: ${input.ingredients.join(", ")}.`,
     input.mealSlot ? `Meal: ${input.mealSlot}.` : null,
     input.constraints ? `Constraints: ${input.constraints}.` : null,
-    input.dietaryPreferences?.length
-      ? `Dietary preferences: ${input.dietaryPreferences.join(", ")}.`
-      : null,
-    // Phrased as its own hard, capitalized requirement rather than folded
-    // into the preferences line above — an allergy is a safety issue, not
-    // a taste preference, and shouldn't read like one to the model.
-    input.allergies?.length
-      ? `MUST NOT include any of the following allergens, in any form: ${input.allergies.join(", ")}. This is a hard requirement, not a preference.`
-      : null,
-    input.unitSystem === "metric"
-      ? "Give ingredient quantities in metric units (g, kg, ml, l) rather than US customary units."
-      : null,
     "",
     "Suggest one recipe that makes the best use of the pantry ingredients above.",
     "It's fine to call for a small number of additional common ingredients " +
@@ -147,4 +140,139 @@ export async function generateRecipeSuggestion(
   }
 
   return { recipe: parsed.data, prompt };
+}
+
+// Batch version of SUGGEST_RECIPE_TOOL — one call, one array back, instead
+// of one Claude request per empty meal box. Filling a mostly-empty week is
+// naturally 10-20 slots; calling generateRecipeSuggestion in a loop that
+// many times would both hammer the per-user rate limit meant for one
+// suggestion at a time and be needlessly slow/expensive for what's really
+// one request ("plan my week") from the user's point of view.
+const FILL_WEEK_TOOL: Anthropic.Tool = {
+  name: "fill_week",
+  description:
+    "Return one recipe suggestion for every requested meal slot, as an array in the exact same order the slots were listed.",
+  input_schema: {
+    type: "object",
+    properties: {
+      recipes: {
+        type: "array",
+        description: "One recipe per requested slot, in the same order as the slot list.",
+        items: RECIPE_ITEM_SCHEMA,
+      },
+    },
+    required: ["recipes"],
+  },
+};
+
+const WeekSuggestionSchema = z.object({
+  recipes: z.array(RecipeSuggestionSchema).min(1),
+});
+
+export interface WeekSuggestionInput {
+  // e.g. ["Monday breakfast", "Monday dinner", "Tuesday lunch", ...] — the
+  // caller (fillWeekWithAi) already knows which slots are empty and in
+  // what order it wants the response back, so that ordering is handed in
+  // as plain labels rather than this module knowing about MealSlot/dates.
+  slotLabels: string[];
+  ingredients: string[];
+  constraints?: string;
+  dietaryPreferences?: string[];
+  allergies?: string[];
+  unitSystem?: "metric" | "imperial";
+}
+
+function buildWeekPrompt(input: WeekSuggestionInput): string {
+  const lines = [
+    input.ingredients.length > 0
+      ? `Pantry ingredients on hand: ${input.ingredients.join(", ")}.`
+      : "No specific pantry ingredients were given — use your judgment for a varied, approachable week of home cooking.",
+    input.constraints ? `Constraints: ${input.constraints}.` : null,
+    input.dietaryPreferences?.length
+      ? `Dietary preferences: ${input.dietaryPreferences.join(", ")}.`
+      : null,
+    input.allergies?.length
+      ? `Allergies/exclusions (hard constraint, never include these): ${input.allergies.join(", ")}.`
+      : null,
+    "",
+    `Suggest a recipe for each of these ${input.slotLabels.length} meal slots, in this exact order:`,
+    ...input.slotLabels.map((label, i) => `${i + 1}. ${label}`),
+    "",
+    "Aim for variety across the week — avoid suggesting the same or a near-identical " +
+      "dish twice unless the pantry list is narrow enough that repeats genuinely make " +
+      "sense. Where it's natural, let ingredients carry across a few meals so the " +
+      "resulting shopping list isn't needlessly scattered (e.g. a bunch of herbs used " +
+      "twice rather than bought for one meal and wasted). Give each ingredient its own " +
+      "quantity, unit, and grocery-aisle category. Call the fill_week tool with exactly " +
+      `${input.slotLabels.length} recipes, one per slot, in the order listed above.`,
+  ];
+  return lines.filter((line) => line !== null).join("\n");
+}
+
+/**
+ * Ask Claude for a whole batch of recipe suggestions in one call — one per
+ * entry in input.slotLabels, returned in that same order. Used by "fill
+ * the week" rather than looping generateRecipeSuggestion once per empty
+ * box (see the comment on FILL_WEEK_TOOL above for why).
+ *
+ * Throws MissingApiKeyError if ANTHROPIC_API_KEY isn't set, or
+ * RecipeSuggestionUpstreamError if the API call fails or returns something
+ * that doesn't match the expected shape. Note: the returned array's length
+ * isn't guaranteed to exactly match slotLabels.length — Claude usually
+ * gets this right but callers should zip by index defensively and handle
+ * a short (or, in principle, long) result rather than assuming it lines
+ * up 1:1.
+ */
+export async function generateWeekSuggestions(
+  input: WeekSuggestionInput,
+): Promise<{ recipes: RecipeSuggestion[]; prompt: string }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new MissingApiKeyError(
+      "ANTHROPIC_API_KEY is not set. Add it to apps/web/.env.local.",
+    );
+  }
+
+  const anthropic = new Anthropic({ apiKey });
+  const prompt = buildWeekPrompt(input);
+  // Generous per-slot budget (a recipe with ingredients + steps runs a
+  // few hundred tokens) capped at Claude's practical output ceiling for
+  // this model, so a nearly-empty week (up to 21 slots) doesn't get cut
+  // off mid-response.
+  const maxTokens = Math.min(8192, 600 + input.slotLabels.length * 350);
+
+  let message: Anthropic.Message;
+  try {
+    message = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: maxTokens,
+      tools: [FILL_WEEK_TOOL],
+      tool_choice: { type: "tool", name: "fill_week" },
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch (error) {
+    throw new RecipeSuggestionUpstreamError(
+      "Couldn't reach the recipe suggestion service. Try again shortly.",
+      { cause: error },
+    );
+  }
+
+  const toolUse = message.content.find(
+    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use",
+  );
+  if (!toolUse) {
+    throw new RecipeSuggestionUpstreamError(
+      "Got an unexpected response while filling the week.",
+    );
+  }
+
+  const parsed = WeekSuggestionSchema.safeParse(toolUse.input);
+  if (!parsed.success) {
+    throw new RecipeSuggestionUpstreamError(
+      "Got a malformed batch of recipe suggestions. Try again.",
+      { cause: parsed.error },
+    );
+  }
+
+  return { recipes: parsed.data.recipes, prompt };
 }

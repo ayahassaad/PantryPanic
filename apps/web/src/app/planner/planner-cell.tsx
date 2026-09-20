@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { MealSlot } from "@pantry-panic/shared";
-import { assignMealPlanEntry, removeMealPlanEntry, updateMealPlanServings } from "./actions";
+import { removeMealPlanEntry, updateMealPlanServings } from "./actions";
 import { RecipeModal } from "./recipe-modal";
 import type { AssignedEntry } from "./recipe-actions";
 
@@ -75,17 +75,29 @@ export function PlannerCell({
 }: PlannerCellProps) {
   const [entry, setEntry] = useState(initialEntry);
   const [pendingRemoval, setPendingRemoval] = useState<PlannerEntryView | null>(null);
-  const [isAssigning, setIsAssigning] = useState(false);
-  const [assignError, setAssignError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  // "new" / "ai" here doubles as "the modal is open, on this tab" — null
-  // means closed. Opened from the empty-cell state below (either the
-  // small "or…" link when there are already recipes to search, or the
-  // big "+" itself when the library is empty and there's nothing to
-  // search yet).
-  const [modalTab, setModalTab] = useState<"new" | "ai" | null>(null);
+  // Whether RecipeModal is open — it owns all three ways of filling this
+  // cell (pick existing / type it in / ask AI) now, so this is just a
+  // boolean rather than tracking which tab.
+  const [modalOpen, setModalOpen] = useState(false);
   const [, startTransition] = useTransition();
   const removalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Every other update to this cell (add/remove/servings) is done
+  // optimistically by calling a server action directly and setting local
+  // state from its result — the page around it is never asked to
+  // refetch. "Fill week" is the one exception: it can touch a dozen-plus
+  // cells at once, far more than any single PlannerCell instance knows
+  // about, so it works the ordinary Next.js way (write to the DB, then
+  // router.refresh() the page) instead. A router.refresh() alone doesn't
+  // update an already-mounted component's own useState — only the props
+  // Next hands back down — so this syncs `entry` to `initialEntry`
+  // whenever a fresh one arrives. Harmless the rest of the time: nothing
+  // in this file triggers a router.refresh(), so in normal use this
+  // effect only ever fires once, on mount, setting the same value
+  // useState already initialized with.
+  useEffect(() => {
+    setEntry(initialEntry);
+  }, [initialEntry]);
 
   // Clears any still-pending removal timer if the cell unmounts (e.g. the
   // week is changed) before the undo window runs out — otherwise it'd
@@ -160,53 +172,13 @@ export function PlannerCell({
     });
   }
 
-  function handleAssign(recipeId: string) {
-    if (!recipeId || isAssigning) {
-      return;
-    }
-    const recipe = recipes.find((r) => r.id === recipeId);
-    if (!recipe) {
-      return;
-    }
-    setIsAssigning(true);
-    setAssignError(null);
-
-    startTransition(async () => {
-      try {
-        const result = await assignMealPlanEntry(recipeId, dateISO, slot);
-        if (result.entryId) {
-          setEntry({
-            id: result.entryId,
-            recipeId: recipe.id,
-            recipeTitle: recipe.title,
-            servings: result.servings ?? 1,
-          });
-          setQuery("");
-        } else {
-          // On error the cell was never shown as filled, so there's
-          // nothing to revert — it just stays the empty "search" state
-          // with a reason why.
-          setAssignError(result.error ?? "Couldn't add that meal.");
-        }
-      } catch (error) {
-        if (isRedirectError(error)) {
-          throw error;
-        }
-        setAssignError("Couldn't add that meal.");
-      } finally {
-        setIsAssigning(false);
-      }
-    });
-  }
-
-  // Shared by both RecipeModal tabs (see recipe-modal.tsx) — it already
-  // hands back exactly the shape PlannerEntryView needs (id, recipeId,
-  // recipeTitle, servings), so filling the cell from a freshly-created
-  // recipe works the same as picking an existing one from the dropdown.
+  // Shared by all three RecipeModal tabs (see recipe-modal.tsx) — each
+  // one hands back exactly the shape PlannerEntryView needs (id,
+  // recipeId, recipeTitle, servings), whether that came from picking an
+  // existing recipe, typing a new one in, or an AI suggestion.
   function handleCreated(created: AssignedEntry) {
     setEntry(created);
-    setModalTab(null);
-    setQuery("");
+    setModalOpen(false);
   }
 
   // Reversible removal: while pendingRemoval is set, the cell shows an
@@ -309,76 +281,31 @@ export function PlannerCell({
     );
   }
 
-  // Favorited recipes were already sorted to the front of `recipes` by
-  // the planner page, so filtering here preserves that order — favorites
-  // still show first among whatever matches the search text.
-  const filteredRecipes = query.trim()
-    ? recipes.filter((r) => r.title.toLowerCase().includes(query.trim().toLowerCase()))
-    : recipes;
-
+  // One button, one door in: it opens RecipeModal, which handles picking
+  // an existing recipe, typing a new one, or asking AI, all as tabs of
+  // the same popup — see recipe-modal.tsx. Defaults to the "existing"
+  // tab when there's a library to search, otherwise straight to "new"
+  // since there's nothing to pick from yet.
   return (
     <>
-      <div className={`flex ${CELL_HEIGHT} flex-col justify-center gap-1.5 overflow-hidden rounded-xl border-2 border-dashed border-ink-faint p-2.5`}>
-        {hasRecipes ? (
-          <>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search recipes…"
-              aria-label="Search recipes"
-              disabled={isAssigning}
-              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-2 py-1.5 text-xs text-ink outline-none focus:border-ink disabled:opacity-60"
-            />
-            <select
-              value=""
-              onChange={(e) => handleAssign(e.target.value)}
-              disabled={isAssigning}
-              aria-label="Choose a recipe"
-              className="w-full rounded-lg border-2 border-ink-faint bg-cream-card px-1.5 py-1.5 text-xs text-ink outline-none focus:border-ink disabled:opacity-60"
-            >
-              <option value="" disabled>
-                {isAssigning ? "Adding…" : filteredRecipes.length === 0 ? "No matches" : "+ Add"}
-              </option>
-              {filteredRecipes.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.isFavorite ? `★ ${r.title}` : r.title}
-                </option>
-              ))}
-            </select>
-            {/* There's room for this alongside the error now that the
-                cell is taller — no longer an either/or. Opens straight
-                to the "type it in" tab; AI is one click away from
-                there. */}
-            <button
-              type="button"
-              onClick={() => setModalTab("new")}
-              className="text-left text-[10px] font-bold leading-tight text-ink-faint underline underline-offset-2 transition hover:text-ink"
-            >
-              or write one / ask AI
-            </button>
-            {assignError && (
-              <p className="text-[10px] font-bold leading-tight text-tomato-600">{assignError}</p>
-            )}
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setModalTab("new")}
-            aria-label="Add a recipe"
-            className="mx-auto text-4xl text-ink-faint transition hover:text-ink"
-          >
-            +
-          </button>
-        )}
+      <div className={`flex ${CELL_HEIGHT} items-center justify-center rounded-xl border-2 border-dashed border-ink-faint p-2.5`}>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="wobble-btn border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition hover:border-ink hover:bg-cream-deep hover:text-ink"
+        >
+          + Add meal
+        </button>
       </div>
 
-      {modalTab && (
+      {modalOpen && (
         <RecipeModal
           dateISO={dateISO}
           slot={slot}
-          defaultTab={modalTab}
-          onClose={() => setModalTab(null)}
+          recipes={recipes}
+          hasRecipes={hasRecipes}
+          defaultTab={hasRecipes ? "existing" : "new"}
+          onClose={() => setModalOpen(false)}
           onCreated={handleCreated}
         />
       )}

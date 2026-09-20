@@ -9,6 +9,7 @@ import { DoodleCarrot, DoodleCitrusSlice, DoodleGrapes, DoodleLeafSprig } from "
 import { PlannerCell, type PlannerEntryView, type RecipeOption } from "./planner-cell";
 import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { CopyWeekButton } from "./copy-week-button";
+import { FillWeekButton } from "./fill-week-button";
 import { RotatingTip } from "./rotating-tip";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -226,6 +227,7 @@ export default async function PlannerPage({
           >
             Next &rarr;
           </Link>
+          <FillWeekButton weekStartISO={weekStartISO} disabled={filledSlots === totalSlots} />
           <CopyWeekButton
             weekStartISO={weekStartISO}
             nextWeekISO={nextWeekISO}
