@@ -232,16 +232,15 @@ export function PlannerCell({
           </div>
         )}
 
-        {/* Same corner-radius recipe as the card itself
-            (rounded-[12px_15px_11px_14px] on the entry div above) and
-            the same border-ink used for the card's own outline — so this
-            reads as a smaller version of the card's shape, not an
-            unrelated pill dropped on top of it. w-full (not w-fit) plus
-            whitespace-nowrap on the count keeps "1 serving" on one line
-            instead of wrapping the number away from its label. */}
+        {/* Small pill: numeral only (the "serving(s)" word is dropped
+            from the visible label — there's no room for it at this
+            width — but kept for screen readers via the sr-only span and
+            the buttons' aria-labels). border-ink/40 instead of solid
+            border-ink so the outline reads as a soft outline rather than
+            a harsh black ring against the slot color. */}
         <div
-          className={`mt-1 flex w-full items-center justify-between gap-1 rounded-[12px_15px_11px_14px] border-2 border-ink px-1.5 py-0.5 ${textClass}`}
-          style={{ opacity: 0.85 }}
+          className={`mt-1 flex w-fit items-center gap-1 rounded-full border border-ink/40 px-1.5 py-0.5 ${textClass}`}
+          style={{ opacity: 0.9 }}
         >
           <button
             type="button"
@@ -252,8 +251,12 @@ export function PlannerCell({
           >
             &minus;
           </button>
-          <span className="whitespace-nowrap text-[9px] font-semibold tabular-nums">
-            {entry.servings} {entry.servings === 1 ? "serving" : "servings"}
+          <span className="text-[10px] font-semibold tabular-nums">
+            {entry.servings}
+            <span className="sr-only">
+              {" "}
+              {entry.servings === 1 ? "serving" : "servings"}
+            </span>
           </span>
           <button
             type="button"
