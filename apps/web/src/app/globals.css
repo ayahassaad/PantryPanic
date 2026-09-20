@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Matches the cream/ink tokens in tailwind.config.ts (colors.cream /
+     colors.ink) — kept as CSS vars too so the page background can be
+     set here once rather than on every page's own wrapper.
+
+     No prefers-color-scheme: dark variant on purpose — this hand-drawn
+     look is designed as a light, cream-background brand identity, not
+     a light/dark pair, so it should look the same regardless of the
+     visitor's system theme until a dark mode is deliberately designed
+     for it. */
+  --background: oklch(97% 0.018 85);
+  --foreground: oklch(24% 0.03 150);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Hand-drawn building blocks, shared across pages as they get restyled.
+   Irregular per-corner radii and a flat offset "sticker" shadow are what
+   give cards/buttons their hand-drawn feel — not really expressible with
+   Tailwind's own border-radius/shadow scales, so they live here instead
+   of being repeated as arbitrary-value classes everywhere. */
+.wobble-a {
+  border-radius: 22px 26px 20px 28px / 26px 20px 28px 22px;
+}
+.wobble-b {
+  border-radius: 18px 22px 26px 20px / 22px 26px 18px 24px;
+}
+.wobble-btn {
+  border-radius: 16px 20px 14px 18px;
+}
+.hand-shadow {
+  box-shadow: 5px 5px 0 var(--foreground);
+}
+/* Colored variants, used where a card/button sits on the plain cream
+   background and a colored offset shadow reads better than an ink one
+   (recipe cards cycling through the accent palette, etc). */
+.hand-shadow-tomato {
+  box-shadow: 5px 5px 0 oklch(62% 0.19 25);
+}
+.hand-shadow-citrus {
+  box-shadow: 5px 5px 0 oklch(80% 0.15 95);
+}
+.hand-shadow-leaf {
+  box-shadow: 5px 5px 0 oklch(62% 0.13 145);
+}
+.hand-shadow-carrot {
+  box-shadow: 5px 5px 0 oklch(68% 0.17 55);
+}
+.hand-shadow-blueberry {
+  box-shadow: 5px 5px 0 oklch(65% 0.13 290);
+}
+
+/* A small idle rotation for the mascot on quieter pages (login, etc.) —
+   just enough to feel alive without being distracting. Respects
+   prefers-reduced-motion since it's purely decorative. */
+.mascot-wiggle {
+  animation: mascot-wiggle 4s ease-in-out infinite;
+}
+@keyframes mascot-wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-wiggle {
+    animation: none;
+  }
+}
+
+/* Recipe card hover: small doodles drift down the card like they're
+   raining. The animation only exists at all while .group:hover applies
+   (rather than always running but just paused) — that way the moment
+   you stop hovering, the doodle snaps straight back to its unanimated
+   base state (opacity: 0) and disappears immediately, instead of
+   freezing wherever it happened to be mid-fall. It also means every new
+   hover starts the fall fresh from the top rather than resuming
+   part-way through. */
+.card-doodle-fall {
+  opacity: 0;
+}
+.group:hover .card-doodle-fall {
+  animation: card-doodle-fall 2.6s linear infinite;
+}
+@keyframes card-doodle-fall {
+  0% {
+    transform: translate(0, -28px) rotate(-6deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate(6px, 130px) rotate(4deg);
+  }
+  85% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate(-4px, 300px) rotate(-8deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-doodle-fall {
+    animation: none;
+    opacity: 0;
+  }
+}
