@@ -1,12 +1,15 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, getISOWeekNumber, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
+import { DoodleCarrot, DoodleCitrusSlice, DoodleGrapes, DoodleLeafSprig } from "@/components/food-doodles";
 import { PlannerCell, type PlannerEntryView, type RecipeOption } from "./planner-cell";
 import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { CopyWeekButton } from "./copy-week-button";
+import { RotatingTip } from "./rotating-tip";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -19,6 +22,26 @@ const PLANNER_TIPS = [
   "Tap a box, see the recipe. It's basically magic (it's not, it's just good UX).",
   "A plan a day keeps the takeout away.",
   "Changed your mind? Just pick a new recipe — it swaps right in.",
+];
+
+// A few doodles that continuously drift down today's column — same
+// falling idea as the recipe cards' hover animation (see
+// card-doodle-fall in globals.css), just always running instead of
+// hover-gated, and driving `top` in percent so it works at whatever
+// height that column ends up being. Left offsets/delays/durations are
+// hand-picked (not randomized) so it reads as "a few doodles, gently
+// staggered" rather than needing a seeded-random helper for four values.
+const TODAY_COLUMN_DOODLES: Array<{
+  Shape: (props: { className?: string; style?: CSSProperties }) => JSX.Element;
+  left: string;
+  delay: string;
+  duration: string;
+  sizeClass: string;
+}> = [
+  { Shape: DoodleCarrot, left: "8%", delay: "0s", duration: "4.6s", sizeClass: "h-4 w-4" },
+  { Shape: DoodleCitrusSlice, left: "68%", delay: "1.3s", duration: "5.2s", sizeClass: "h-4 w-4" },
+  { Shape: DoodleLeafSprig, left: "36%", delay: "2.7s", duration: "4.1s", sizeClass: "h-3.5 w-3.5" },
+  { Shape: DoodleGrapes, left: "84%", delay: "3.5s", duration: "5.5s", sizeClass: "h-4 w-4" },
 ];
 
 // One accent per meal slot, echoed from the design mockup (breakfast =
@@ -120,7 +143,13 @@ export default async function PlannerPage({
   }
 
   const hasRecipes = Boolean(recipes && recipes.length > 0);
-  const tip = PLANNER_TIPS[new Date().getDay() % PLANNER_TIPS.length] ?? PLANNER_TIPS[0];
+  // Which tip the rotation starts on — RotatingTip (a client component)
+  // takes it from there and advances every 10s on its own timer. Tying
+  // the starting point to the day of week is purely a nice touch (same
+  // one visitor sees the same first tip all day); the actual rotation
+  // needs a client-side interval, which is why this can no longer be a
+  // single server-picked value the way it used to be.
+  const tipStartIndex = new Date().getDay() % PLANNER_TIPS.length;
 
   const totalSlots = weekDays.length * MEAL_SLOTS.length;
   const filledSlots = entries?.length ?? 0;
@@ -218,19 +247,40 @@ export default async function PlannerPage({
           instead of forcing horizontal scrolling. */}
       <div className="hidden overflow-x-auto md:block">
         <div className="relative grid min-w-[780px] grid-cols-[76px_repeat(7,1fr)] items-center gap-2.5">
-          {/* A subtle tint behind today's whole column, so it's visible
-              at a glance instead of just the small circle on its date
-              number. Explicitly positioned (not part of the normal grid
-              flow), so it paints behind every cell placed after it —
-              colored/filled cells cover it completely, and the
-              transparent empty "+ Add" cells and day header let it show
-              through. */}
+          {/* Today's whole column gets a few doodles continuously
+              falling down it, so it's visible at a glance instead of
+              just the small circle on its date number.
+
+              This MUST be `absolute` (not a plain grid item): a grid
+              item placed with `gridColumn`/`gridRow` — even one with no
+              visible content — still occupies those cells for the
+              auto-placement algorithm, which skips any cell already
+              taken (by an explicit item or otherwise) when placing the
+              next auto-positioned item. Spanning every row of today's
+              column with a normal grid item bumped every subsequent
+              auto-placed cell in that column sideways into whatever
+              slot was next free, cascading into every row below it —
+              that's the "everything's shifted one column, Sunday's
+              header lands in the label column" bug this replaced.
+              `absolute` takes it out of grid-item generation entirely
+              (it's just sized/positioned against the grid lines named
+              in `style`, via the `relative` grid container above as its
+              containing block), so it can align to today's column
+              without ever competing for a cell. */}
           {todayColumnIndex !== -1 && (
             <div
               aria-hidden
-              className="pointer-events-none rounded-2xl bg-citrus-50"
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
               style={{ gridColumn: `${todayColumnIndex + 2} / span 1`, gridRow: "1 / -1" }}
-            />
+            >
+              {TODAY_COLUMN_DOODLES.map(({ Shape, left, delay, duration, sizeClass }, i) => (
+                <Shape
+                  key={i}
+                  className={`today-doodle-fall absolute top-0 ${sizeClass}`}
+                  style={{ left, animationDelay: delay, animationDuration: duration }}
+                />
+              ))}
+            </div>
           )}
 
           <div />
@@ -294,7 +344,7 @@ export default async function PlannerPage({
 
       <div className="mt-8 flex max-w-xl items-center gap-4 rounded-2xl bg-cream-deep px-5 py-4">
         <Mascot className="h-[50px] w-[46px] flex-none" />
-        <p className="text-sm font-bold text-ink">{tip}</p>
+        <RotatingTip tips={PLANNER_TIPS} startIndex={tipStartIndex} />
       </div>
     </main>
   );

@@ -117,3 +117,38 @@ body {
     opacity: 0;
   }
 }
+
+/* Planner: today's column gets a few doodles continuously drifting down
+   it instead of a flat highlight color — same falling idea as the
+   recipe card hover animation above, but always running (not
+   hover-gated, since there's no hover target for a whole column) and
+   driven by `top` in percent rather than a fixed pixel travel distance,
+   so it looks right whatever height the column ends up being that
+   week. animation-duration/-delay are overridden per doodle inline (see
+   TODAY_COLUMN_DOODLES in planner/page.tsx) for a bit of stagger. */
+.today-doodle-fall {
+  opacity: 0;
+  animation: today-doodle-fall 4.5s linear infinite;
+}
+@keyframes today-doodle-fall {
+  0% {
+    top: -10%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.55;
+  }
+  88% {
+    opacity: 0.55;
+  }
+  100% {
+    top: 105%;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-doodle-fall {
+    animation: none;
+    opacity: 0;
+  }
+}
