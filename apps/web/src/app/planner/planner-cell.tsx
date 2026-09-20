@@ -235,13 +235,11 @@ export function PlannerCell({
         {/* Small pill: numeral only (the "serving(s)" word is dropped
             from the visible label — there's no room for it at this
             width — but kept for screen readers via the sr-only span and
-            the buttons' aria-labels). border-ink/40 instead of solid
-            border-ink so the outline reads as a soft outline rather than
-            a harsh black ring against the slot color. */}
-        <div
-          className={`mt-1 flex w-fit items-center gap-1 rounded-full border border-ink/40 px-1.5 py-0.5 ${textClass}`}
-          style={{ opacity: 0.9 }}
-        >
+            the buttons' aria-labels). Border, buttons and numeral are
+            all plain text-ink/border-ink (not the per-slot textClass)
+            so the stepper reads the same solid black on every meal
+            slot's color, matching the card's own black outline. */}
+        <div className="mt-1 flex w-fit items-center gap-1 rounded-full border border-ink px-1.5 py-0.5 text-ink">
           <button
             type="button"
             onClick={() => adjustServings(-1)}
