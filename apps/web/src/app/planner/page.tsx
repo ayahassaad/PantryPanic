@@ -5,6 +5,7 @@ import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, getISOWeekNumber, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
 import { PlannerCell } from "./planner-cell";
+import { CopyWeekButton } from "./copy-week-button";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -132,6 +133,11 @@ export default async function PlannerPage({
           >
             Next &rarr;
           </Link>
+          <CopyWeekButton
+            weekStartISO={weekStartISO}
+            nextWeekISO={nextWeekISO}
+            disabled={(entries?.length ?? 0) === 0}
+          />
           <Link
             href={`/shopping-list?week=${weekStartISO}`}
             className="wobble-btn hand-shadow bg-tomato-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105"
