@@ -96,6 +96,11 @@ export default async function PlannerPage({
   const hasRecipes = Boolean(recipes && recipes.length > 0);
   const tip = PLANNER_TIPS[new Date().getDay() % PLANNER_TIPS.length] ?? PLANNER_TIPS[0];
 
+  const totalSlots = weekDays.length * MEAL_SLOTS.length;
+  const filledSlots = entries?.length ?? 0;
+
+  const todayColumnIndex = weekDays.findIndex((d) => toISODate(d) === todayISO);
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8 sm:px-10">
       <Link
@@ -113,6 +118,9 @@ export default async function PlannerPage({
           <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink sm:text-4xl">
             Week {weekNumber}
           </h1>
+          <p className="mt-1 text-sm font-bold text-ink-soft">
+            {filledSlots} of {totalSlots} meals planned
+          </p>
         </div>
         <div className="flex flex-none flex-wrap items-center gap-2.5">
           <Link
@@ -136,7 +144,7 @@ export default async function PlannerPage({
           <CopyWeekButton
             weekStartISO={weekStartISO}
             nextWeekISO={nextWeekISO}
-            disabled={(entries?.length ?? 0) === 0}
+            disabled={filledSlots === 0}
           />
           <Link
             href={`/shopping-list?week=${weekStartISO}`}
@@ -162,7 +170,22 @@ export default async function PlannerPage({
       )}
 
       <div className="overflow-x-auto">
-        <div className="grid min-w-[780px] grid-cols-[76px_repeat(7,1fr)] items-center gap-2.5">
+        <div className="relative grid min-w-[780px] grid-cols-[76px_repeat(7,1fr)] items-center gap-2.5">
+          {/* A subtle tint behind today's whole column, so it's visible
+              at a glance instead of just the small circle on its date
+              number. Explicitly positioned (not part of the normal grid
+              flow), so it paints behind every cell placed after it —
+              colored/filled cells cover it completely, and the
+              transparent empty "+ Add" cells and day header let it show
+              through. */}
+          {todayColumnIndex !== -1 && (
+            <div
+              aria-hidden
+              className="pointer-events-none rounded-2xl bg-citrus-50"
+              style={{ gridColumn: `${todayColumnIndex + 2} / span 1`, gridRow: "1 / -1" }}
+            />
+          )}
+
           <div />
           {weekDays.map((day, i) => {
             const isToday = toISODate(day) === todayISO;
