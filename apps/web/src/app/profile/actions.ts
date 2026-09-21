@@ -193,6 +193,7 @@ export async function changeEmail(formData: FormData) {
 
 const ChangePasswordSchema = z
   .object({
+    currentPassword: z.string().min(1, "Enter your current password."),
     newPassword: z.string().min(8, "Password must be at least 8 characters."),
     confirmPassword: z.string(),
   })
@@ -212,6 +213,7 @@ export async function changePassword(formData: FormData) {
   }
 
   const parsed = ChangePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
     newPassword: formData.get("newPassword"),
     confirmPassword: formData.get("confirmPassword"),
   });
@@ -222,6 +224,32 @@ export async function changePassword(formData: FormData) {
         parsed.error.issues[0]?.message ?? "Check your new password and try again.",
       )}`,
     );
+  }
+
+  if (!user.email) {
+    redirect(
+      `/profile?error=${encodeURIComponent(
+        "Your account has no email on file to verify the current password against.",
+      )}`,
+    );
+  }
+
+  // supabase.auth.updateUser() doesn't ask for the current password itself
+  // — it trusts whatever session is already active. Without this check,
+  // anyone who got hold of an already-signed-in session (a shared or
+  // unlocked device, a stolen session cookie) could lock the real owner
+  // out just by submitting a new password, no proof of the old one
+  // required. signInWithPassword re-validates the current password
+  // against Supabase Auth directly; only on success do we go on to
+  // actually change it. (It also refreshes the session to the one it just
+  // verified, which is fine — it's the same user, same account.)
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: parsed.data.currentPassword,
+  });
+
+  if (verifyError) {
+    redirect(`/profile?error=${encodeURIComponent("Current password is incorrect.")}`);
   }
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.newPassword });

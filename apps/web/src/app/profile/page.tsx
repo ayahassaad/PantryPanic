@@ -210,33 +210,44 @@ export default async function ProfilePage({
             </button>
           </form>
 
-          <form className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
-              New password
+          <form className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1.5 text-sm font-bold text-ink-soft">
+              Current password
               <input
-                name="newPassword"
+                name="currentPassword"
                 type="password"
-                autoComplete="new-password"
-                minLength={8}
+                autoComplete="current-password"
                 className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-blueberry-400"
               />
             </label>
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
-              Confirm password
-              <input
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-blueberry-400"
-              />
-            </label>
-            <button
-              formAction={changePassword}
-              className="wobble-btn border-2 border-ink bg-cream-deep px-4 py-2.5 font-display text-sm font-semibold text-ink transition hover:bg-cream"
-            >
-              Update password
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
+                New password
+                <input
+                  name="newPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-blueberry-400"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
+                Confirm password
+                <input
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-blueberry-400"
+                />
+              </label>
+              <button
+                formAction={changePassword}
+                className="wobble-btn border-2 border-ink bg-cream-deep px-4 py-2.5 font-display text-sm font-semibold text-ink transition hover:bg-cream"
+              >
+                Update password
+              </button>
+            </div>
           </form>
 
           <form>
