@@ -146,6 +146,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 const ChangeEmailSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password."),
   newEmail: z.string().trim().email("Enter a valid email address."),
 });
 
@@ -165,6 +166,7 @@ export async function changeEmail(formData: FormData) {
   }
 
   const parsed = ChangeEmailSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
     newEmail: formData.get("newEmail"),
   });
 
@@ -174,6 +176,28 @@ export async function changeEmail(formData: FormData) {
         parsed.error.issues[0]?.message ?? "Enter a valid email address.",
       )}`,
     );
+  }
+
+  if (!user.email) {
+    redirect(
+      `/profile?error=${encodeURIComponent(
+        "Your account has no email on file to verify the current password against.",
+      )}`,
+    );
+  }
+
+  // Same reasoning as changePassword below: updateUser() trusts whatever
+  // session is already active and won't ask for the password itself, so
+  // without this, anyone with access to an already-signed-in session
+  // could redirect the account's login email to somewhere they control.
+  // Re-verify the current password first, same as a password change.
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: parsed.data.currentPassword,
+  });
+
+  if (verifyError) {
+    redirect(`/profile?error=${encodeURIComponent("Current password is incorrect.")}`);
   }
 
   const { error } = await supabase.auth.updateUser({ email: parsed.data.newEmail });

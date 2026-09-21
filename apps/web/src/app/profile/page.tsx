@@ -191,23 +191,34 @@ export default async function ProfilePage({
         </h2>
 
         <div className="flex flex-col gap-6">
-          <form className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-            <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
-              Change email
-              <input
-                name="newEmail"
-                type="email"
-                placeholder={user.email}
-                autoComplete="email"
-                className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none placeholder:text-ink-faint focus:border-blueberry-400"
-              />
-            </label>
-            <button
-              formAction={changeEmail}
-              className="wobble-btn border-2 border-ink bg-cream-deep px-4 py-2.5 font-display text-sm font-semibold text-ink transition hover:bg-cream"
-            >
-              Update email
-            </button>
+          <form className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
+                Change email
+                <input
+                  name="newEmail"
+                  type="email"
+                  placeholder={user.email}
+                  autoComplete="email"
+                  className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none placeholder:text-ink-faint focus:border-blueberry-400"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5 text-sm font-bold text-ink-soft">
+                Current password
+                <input
+                  name="currentPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-blueberry-400"
+                />
+              </label>
+              <button
+                formAction={changeEmail}
+                className="wobble-btn border-2 border-ink bg-cream-deep px-4 py-2.5 font-display text-sm font-semibold text-ink transition hover:bg-cream"
+              >
+                Update email
+              </button>
+            </div>
           </form>
 
           <form className="flex flex-col gap-3">
