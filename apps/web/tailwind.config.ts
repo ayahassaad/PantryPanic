@@ -74,7 +74,7 @@ const config: Config = {
         // Tailwind's base reset, with the same system-font fallback
         // chain as before if the Google Font fails to load.
         sans: ["var(--font-nunito)", ...defaultTheme.fontFamily.sans],
-        display: ["var(--font-fredoka)", ...defaultTheme.fontFamily.sans],
+        display: ["var(--font-patrick-hand)", ...defaultTheme.fontFamily.sans],
       },
     },
   },
