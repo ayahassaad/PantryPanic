@@ -321,21 +321,6 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
                 {recipe.description && (
                   <p className="mt-1 text-sm text-ink-soft">{recipe.description}</p>
                 )}
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {recipe.source === "ai" && (
-                    <span className="rounded-full border-2 border-ink bg-blueberry-400 px-2.5 py-0.5 text-xs font-extrabold text-cream">
-                      AI suggested
-                    </span>
-                  )}
-                  {recipe.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full border-2 border-ink bg-cream-deep px-2.5 py-0.5 text-xs font-extrabold text-ink"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
               </div>
             </li>
           );
