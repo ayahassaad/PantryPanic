@@ -9,6 +9,14 @@ import { MAX_SELECTED_SLOTS } from "./fill-week-constants";
 
 interface FillWeekButtonProps {
   weekStartISO: string;
+  // How many of the shared daily AI-request budget this user has left
+  // right now (computed server-side in planner/page.tsx, since "Fill week"
+  // and the single-recipe "Ask AI" form draw from the same counter — see
+  // lib/ai-rate-limit.ts) — shown so hitting the wall never comes as a
+  // surprise, and disabling the button once it's actually at 0 saves a
+  // click that would just bounce off the server-side limit anyway.
+  aiRequestsRemaining: number;
+  aiRequestsMax: number;
 }
 
 const SLOT_LABELS: Record<MealSlot, string> = {
@@ -60,7 +68,11 @@ function isRedirectError(error: unknown): boolean {
 // under), a fill can touch several cells across the grid at once, so on
 // success it calls router.refresh() instead of lifting state anywhere —
 // see the effect in planner-cell.tsx that picks that refresh up.
-export function FillWeekButton({ weekStartISO }: FillWeekButtonProps) {
+export function FillWeekButton({
+  weekStartISO,
+  aiRequestsRemaining,
+  aiRequestsMax,
+}: FillWeekButtonProps) {
   const { selected, isSelecting, toggle, startSelecting, stopSelecting } = useFillWeekSelection();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,14 +122,27 @@ export function FillWeekButton({ weekStartISO }: FillWeekButtonProps) {
   }
 
   if (!isSelecting) {
+    const outOfRequests = aiRequestsRemaining <= 0;
     return (
-      <button
-        type="button"
-        onClick={startSelecting}
-        className="wobble-btn border-2 border-ink bg-blueberry-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105"
-      >
-        ✨ Fill week with AI
-      </button>
+      <div className="flex flex-col items-start gap-1">
+        <button
+          type="button"
+          onClick={startSelecting}
+          disabled={outOfRequests}
+          className="wobble-btn border-2 border-ink bg-blueberry-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
+        >
+          ✨ Fill week with AI
+        </button>
+        {/* Cosmetic only — see the prop comment above. Reads as a plain
+            counter most of the time, and only turns into an explanation
+            once it actually hits zero (disabling the button above at the
+            same threshold, so the two never disagree). */}
+        <span className="px-1 text-[11px] font-semibold text-ink-faint">
+          {outOfRequests
+            ? "Used all your AI suggestions for today — resets tomorrow"
+            : `${aiRequestsRemaining} of ${aiRequestsMax} AI suggestions left today`}
+        </span>
+      </div>
     );
   }
 

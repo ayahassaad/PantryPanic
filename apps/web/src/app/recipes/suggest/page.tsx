@@ -4,6 +4,7 @@ import { MEAL_SLOTS } from "@pantry-panic/shared";
 import { Mascot } from "@/components/mascot";
 import { suggestRecipe } from "./actions";
 import { SubmitButton } from "./submit-button";
+import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate-limit";
 
 export default async function SuggestRecipePage({
   searchParams,
@@ -20,6 +21,15 @@ export default async function SuggestRecipePage({
   }
 
   const { error } = await searchParams;
+
+  // Same shared daily counter "Fill week with AI" draws from — see
+  // lib/ai-rate-limit.ts — so this reflects however many of the two
+  // features' combined budget is left, not a separate pool of its own.
+  const recentAiRequestCount = await countRecentAiRequests(supabase, user.id);
+  const aiRequestsRemaining = Math.max(
+    0,
+    AI_RATE_LIMIT_MAX_REQUESTS - (recentAiRequestCount ?? 0),
+  );
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-8 sm:px-10">
@@ -88,7 +98,12 @@ export default async function SuggestRecipePage({
           <span className="text-xs font-normal text-ink-faint">Optional.</span>
         </label>
 
-        <SubmitButton hasError={Boolean(error)} />
+        <SubmitButton hasError={Boolean(error)} outOfRequests={aiRequestsRemaining <= 0} />
+        <span className="-mt-3 text-xs font-semibold text-ink-faint">
+          {aiRequestsRemaining > 0
+            ? `${aiRequestsRemaining} of ${AI_RATE_LIMIT_MAX_REQUESTS} AI suggestions left today`
+            : "Resets tomorrow."}
+        </span>
       </form>
     </main>
   );

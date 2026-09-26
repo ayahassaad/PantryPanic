@@ -27,12 +27,35 @@ import { useEffect, useState } from "react";
 // submission would leave the button stuck saying "Thinking of something…"
 // forever, since Next's soft navigation back to this same route doesn't
 // remount this component.
-export function SubmitButton({ hasError }: { hasError: boolean }) {
+export function SubmitButton({
+  hasError,
+  outOfRequests = false,
+}: {
+  hasError: boolean;
+  // True when the shared daily AI-request budget (see lib/ai-rate-limit.ts)
+  // is already spent — a real, static `disabled` set from the initial
+  // render, not toggled during a click the way `pending` below is, so it
+  // doesn't run into the disabled-cancels-submission gotcha described
+  // above: the button just never becomes clickable in the first place.
+  outOfRequests?: boolean;
+}) {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (hasError) setPending(false);
   }, [hasError]);
+
+  if (outOfRequests) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="wobble-btn hand-shadow mt-2 w-fit cursor-not-allowed bg-blueberry-400 px-5 py-2.5 font-display text-sm font-semibold text-cream opacity-50"
+      >
+        Used all your AI suggestions for today
+      </button>
+    );
+  }
 
   return (
     <button

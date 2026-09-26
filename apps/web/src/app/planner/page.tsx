@@ -11,6 +11,7 @@ import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { FillWeekButton } from "./fill-week-button";
 import { FillWeekSelectionProvider } from "./fill-week-selection";
 import { RotatingTip } from "./rotating-tip";
+import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate-limit";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -125,21 +126,33 @@ export default async function PlannerPage({
   // recipe:recipes(id, title) embeds the joined recipe via the recipe_id
   // foreign key — PostgREST resolves the relationship automatically, no
   // manual join needed.
-  const [{ data: entries }, { data: recipeRows }, { data: favoriteRows }] = await Promise.all([
-    supabase
-      .from("meal_plan_entries")
-      .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
-      .eq("user_id", user.id)
-      .gte("plan_date", weekStartISO)
-      .lte("plan_date", weekEndISO)
-      .returns<PlannerEntry[]>(),
-    supabase
-      .from("recipes")
-      .select("id, title")
-      .order("title")
-      .returns<RecipeOptionRow[]>(),
-    supabase.from("recipe_favorites").select("recipe_id").eq("owner_id", user.id),
-  ]);
+  const [{ data: entries }, { data: recipeRows }, { data: favoriteRows }, recentAiRequestCount] =
+    await Promise.all([
+      supabase
+        .from("meal_plan_entries")
+        .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
+        .eq("user_id", user.id)
+        .gte("plan_date", weekStartISO)
+        .lte("plan_date", weekEndISO)
+        .returns<PlannerEntry[]>(),
+      supabase
+        .from("recipes")
+        .select("id, title")
+        .order("title")
+        .returns<RecipeOptionRow[]>(),
+      supabase.from("recipe_favorites").select("recipe_id").eq("owner_id", user.id),
+      countRecentAiRequests(supabase, user.id),
+    ]);
+
+  // null (the count itself failed) is treated the same as "nothing used
+  // yet" — this is purely a cosmetic "X left today" indicator, not the
+  // actual enforcement (that's the check inside fillWeekWithAi itself),
+  // so it's better to show an optimistic number than a scary or confusing
+  // one over what amounts to a display glitch.
+  const aiRequestsRemaining = Math.max(
+    0,
+    AI_RATE_LIMIT_MAX_REQUESTS - (recentAiRequestCount ?? 0),
+  );
 
   // Favorited recipes are sorted to the front so they're the first thing
   // offered when assigning a meal — Array#sort is stable, so the
@@ -235,7 +248,11 @@ export default async function PlannerPage({
           >
             Today
           </Link>
-          <FillWeekButton weekStartISO={weekStartISO} />
+          <FillWeekButton
+            weekStartISO={weekStartISO}
+            aiRequestsRemaining={aiRequestsRemaining}
+            aiRequestsMax={AI_RATE_LIMIT_MAX_REQUESTS}
+          />
           <Link
             href={`/shopping-list?week=${weekStartISO}`}
             className="wobble-btn hand-shadow bg-tomato-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105"

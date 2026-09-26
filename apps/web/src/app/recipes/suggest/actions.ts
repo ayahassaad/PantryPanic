@@ -8,12 +8,7 @@ import {
   RecipeSuggestionUpstreamError,
 } from "@/lib/anthropic/suggest-recipe";
 import { RecipeSuggestionInputSchema } from "@pantry-panic/shared";
-
-// Each call to Claude costs real money whether or not it succeeds, so cap
-// how many suggestion attempts one user can make in a rolling window.
-// Bump these if 10/day turns out to be too tight for normal use.
-const RATE_LIMIT_MAX_REQUESTS = 10;
-const RATE_LIMIT_WINDOW_HOURS = 24;
+import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate-limit";
 
 export async function suggestRecipe(formData: FormData) {
   const supabase = await createClient();
@@ -68,28 +63,15 @@ export async function suggestRecipe(formData: FormData) {
     );
   }
 
-  // Count this user's attempts in the last RATE_LIMIT_WINDOW_HOURS. Fail
-  // OPEN if the count itself errors out (e.g. a transient DB hiccup) —
-  // a rate limiter that's down shouldn't also take the whole feature down
-  // with it, and we still log the attempt below either way.
-  const since = new Date(
-    Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000,
-  ).toISOString();
-  const { count: recentRequestCount, error: countError } = await supabase
-    .from("ai_recipe_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", user.id)
-    .gte("created_at", since);
-
-  if (countError) {
-    console.error(
-      "[recipes/suggest] couldn't check AI rate limit, allowing request:",
-      countError,
-    );
-  } else if ((recentRequestCount ?? 0) >= RATE_LIMIT_MAX_REQUESTS) {
+  // Count this user's attempts in the current rolling window. Fail OPEN
+  // if the count itself errors out (e.g. a transient DB hiccup) — a rate
+  // limiter that's down shouldn't also take the whole feature down with
+  // it, and we still log the attempt below either way.
+  const recentRequestCount = await countRecentAiRequests(supabase, user.id);
+  if (recentRequestCount !== null && recentRequestCount >= AI_RATE_LIMIT_MAX_REQUESTS) {
     redirect(
       `/recipes/suggest?error=${encodeURIComponent(
-        `You've hit the limit of ${RATE_LIMIT_MAX_REQUESTS} AI suggestions per day. Try again later, or add a recipe yourself in the meantime.`,
+        `You've hit the limit of ${AI_RATE_LIMIT_MAX_REQUESTS} AI suggestions per day. Try again later, or add a recipe yourself in the meantime.`,
       )}`,
     );
   }

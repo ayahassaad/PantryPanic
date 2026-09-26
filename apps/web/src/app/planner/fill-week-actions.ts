@@ -31,6 +31,7 @@ import {
   RecipeSuggestionUpstreamError,
 } from "@/lib/anthropic/suggest-recipe";
 import { MAX_SELECTED_SLOTS } from "./fill-week-constants";
+import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate-limit";
 
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -47,14 +48,6 @@ const FillWeekSchema = z.object({
   ingredients: z.array(z.string().trim().min(1).max(80)).max(60),
   constraints: z.string().trim().max(300).optional(),
 });
-
-// Same shared counter suggestRecipe/suggestRecipeAndAssign use, and the
-// same limit — one "fill" click is exactly one Claude call (see
-// generateWeekSuggestions), same as one single-recipe ask, so it costs
-// the same 1 request against the daily budget rather than needing its
-// own separate cap.
-const RATE_LIMIT_MAX_REQUESTS = 10;
-const RATE_LIMIT_WINDOW_HOURS = 24;
 
 export async function fillWeekWithAi(
   formData: FormData,
@@ -148,18 +141,10 @@ export async function fillWeekWithAi(
       unit_system: "metric" | "imperial";
     }>();
 
-  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const { count: recentRequestCount, error: countError } = await supabase
-    .from("ai_recipe_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", user.id)
-    .gte("created_at", since);
-
-  if (countError) {
-    console.error("[planner/fill-week-actions] couldn't check AI rate limit, allowing request:", countError);
-  } else if ((recentRequestCount ?? 0) >= RATE_LIMIT_MAX_REQUESTS) {
+  const recentRequestCount = await countRecentAiRequests(supabase, user.id);
+  if (recentRequestCount !== null && recentRequestCount >= AI_RATE_LIMIT_MAX_REQUESTS) {
     return {
-      error: `You've hit the limit of ${RATE_LIMIT_MAX_REQUESTS} AI suggestions per day. Try again later, or fill the rest in yourself for now.`,
+      error: `You've hit the limit of ${AI_RATE_LIMIT_MAX_REQUESTS} AI suggestions per day. Try again later, or fill the rest in yourself for now.`,
     };
   }
 
