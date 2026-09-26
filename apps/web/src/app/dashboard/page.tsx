@@ -18,9 +18,21 @@ export default async function DashboardPage() {
   // never blank.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, onboarding_completed_at")
     .eq("id", user.id)
-    .maybeSingle<{ full_name: string | null }>();
+    .maybeSingle<{ full_name: string | null; onboarding_completed_at: string | null }>();
+
+  // The real gate for the signup quiz. auth/callback/route.ts also sends a
+  // freshly-confirmed signup here directly, but that route only ever
+  // fires when email confirmation requires clicking a link — a Supabase
+  // project with confirmations turned off signs someone in immediately on
+  // signup, so they can reach the dashboard without ever passing through
+  // that route at all. Checking it here instead means the quiz shows up
+  // for every new user exactly once no matter which path got them signed
+  // in, and never again once onboarding/actions.ts marks it done.
+  if (!profile?.onboarding_completed_at) {
+    redirect("/onboarding");
+  }
 
   const firstName = (profile?.full_name?.trim().split(" ")[0] || user.email?.split("@")[0]) ?? "there";
 

@@ -39,26 +39,49 @@ export async function completeOnboarding(formData: FormData) {
     unitSystem: formData.get("unitSystem"),
   });
 
-  if (parsed.success) {
-    await supabase
-      .from("profiles")
-      .update({
-        cuisine_preferences: parsed.data.cuisinePreferences,
-        dietary_preferences: parsed.data.dietaryPreferences,
-        allergies: parsed.data.allergies,
-        household_size: parsed.data.householdSize,
-        unit_system: parsed.data.unitSystem,
-      })
-      .eq("id", user.id);
-  }
+  // onboarding_completed_at is set here regardless of whether parsed
+  // actually succeeded — this is what stops the dashboard (which now
+  // gates on this column — see dashboard/page.tsx) from bouncing the
+  // user right back to this same quiz forever if their answers happened
+  // to fail validation.
+  await supabase
+    .from("profiles")
+    .update({
+      ...(parsed.success
+        ? {
+            cuisine_preferences: parsed.data.cuisinePreferences,
+            dietary_preferences: parsed.data.dietaryPreferences,
+            allergies: parsed.data.allergies,
+            household_size: parsed.data.householdSize,
+            unit_system: parsed.data.unitSystem,
+          }
+        : {}),
+      onboarding_completed_at: new Date().toISOString(),
+    })
+    .eq("id", user.id);
 
   redirect("/dashboard");
 }
 
 // The "Skip for now" button — available on every step, not just the last
-// one. Deliberately takes no data and saves nothing: a partial answer
-// isn't better than no answer, and the whole point of "skippable" is that
-// a new user can bail straight to their dashboard with zero friction.
+// one. Deliberately takes no data and saves nothing beyond the timestamp
+// itself: a partial answer isn't better than no answer, and the whole
+// point of "skippable" is that a new user can bail straight to their
+// dashboard with zero friction. Still has to mark onboarding_completed_at
+// — otherwise "skip" would just re-show the quiz on every future visit to
+// the dashboard instead of actually skipping it for good.
 export async function skipOnboarding() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    await supabase
+      .from("profiles")
+      .update({ onboarding_completed_at: new Date().toISOString() })
+      .eq("id", user.id);
+  }
+
   redirect("/dashboard");
 }
