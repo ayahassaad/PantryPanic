@@ -8,12 +8,33 @@ import { Mascot } from "@/components/mascot";
 import { DoodleCarrot, DoodleCitrusSlice, DoodleGrapes, DoodleLeafSprig } from "@/components/food-doodles";
 import { PlannerCell, type PlannerEntryView, type RecipeOption } from "./planner-cell";
 import { MobileWeekView, type MobileDay } from "./mobile-week-view";
-import { CopyWeekButton } from "./copy-week-button";
 import { FillWeekButton } from "./fill-week-button";
 import { FillWeekSelectionProvider } from "./fill-week-selection";
 import { RotatingTip } from "./rotating-tip";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// The two circular week-switch buttons flanking the schedule — a single
+// chevron path, mirrored via scaleX for "next" rather than keeping two
+// near-duplicate paths around.
+function WeekArrowIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5 sm:h-6 sm:w-6"
+      style={direction === "right" ? { transform: "scaleX(-1)" } : undefined}
+      fill="none"
+    >
+      <path
+        d="M15,5 L8,12 L15,19"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 // Rotates by day of week, same trick as the login page's tagline — no
 // client-side randomness (which would risk a hydration mismatch on this
@@ -47,16 +68,18 @@ const TODAY_COLUMN_DOODLES: Array<{
 ];
 
 // One accent per meal slot, echoed from the design mockup (breakfast =
-// citrus, lunch = leaf, dinner = tomato). citrus-400 is light enough that
-// dark ink reads better on it than cream; leaf/tomato are dark enough to
-// need cream text instead.
+// citrus, lunch = leaf, dinner = tomato). Cell text is ink (near-black)
+// across all three slots — originally lunch/dinner used cream text since
+// leaf/tomato are darker than citrus, but ink reads fine against their
+// medium lightness too, and keeping one text color for all three cells
+// (matching what breakfast already looked like) is simpler than three.
 const SLOT_STYLES: Record<
   MealSlot,
   { label: string; cell: string; text: string }
 > = {
   breakfast: { label: "text-citrus-600", cell: "bg-citrus-400", text: "text-ink" },
-  lunch: { label: "text-leaf-600", cell: "bg-leaf-400", text: "text-cream" },
-  dinner: { label: "text-tomato-600", cell: "bg-tomato-400", text: "text-cream" },
+  lunch: { label: "text-leaf-600", cell: "bg-leaf-400", text: "text-ink" },
+  dinner: { label: "text-tomato-600", cell: "bg-tomato-400", text: "text-ink" },
 };
 
 interface PlannerEntry {
@@ -186,9 +209,6 @@ export default async function PlannerPage({
       <FillWeekSelectionProvider weekStartISO={weekStartISO}>
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
-            Planner
-          </p>
           <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink sm:text-4xl">
             Week {weekNumber}
           </h1>
@@ -210,29 +230,12 @@ export default async function PlannerPage({
 
         <div className="flex flex-none flex-wrap items-center gap-2.5">
           <Link
-            href={`/planner?week=${prevWeekISO}`}
-            className="wobble-btn border-2 border-ink bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
-          >
-            &larr; Prev
-          </Link>
-          <Link
             href={`/planner?week=${todayISO}`}
             className="wobble-btn border-2 border-ink bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
           >
             Today
           </Link>
-          <Link
-            href={`/planner?week=${nextWeekISO}`}
-            className="wobble-btn border-2 border-ink bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
-          >
-            Next &rarr;
-          </Link>
           <FillWeekButton weekStartISO={weekStartISO} />
-          <CopyWeekButton
-            weekStartISO={weekStartISO}
-            nextWeekISO={nextWeekISO}
-            disabled={filledSlots === 0}
-          />
           <Link
             href={`/shopping-list?week=${weekStartISO}`}
             className="wobble-btn hand-shadow bg-tomato-400 px-4 py-2 font-display text-sm font-semibold text-cream transition hover:brightness-105"
@@ -241,6 +244,30 @@ export default async function PlannerPage({
           </Link>
         </div>
       </div>
+
+      {/* Flanks the whole schedule (both the desktop grid and the mobile
+          day view render inside here) with two big circular buttons for
+          switching weeks — replaces the old "← Prev" / "Next →" text
+          links, which sat up in the header row disconnected from the
+          thing they actually moved. `relative` here is this wrapper's
+          own positioning context for the two `absolute` arrows; the
+          horizontal padding keeps the grid/day content from ever running
+          underneath them. */}
+      <div className="relative px-14 sm:px-16">
+        <Link
+          href={`/planner?week=${prevWeekISO}`}
+          aria-label="Previous week"
+          className="wobble-btn hand-shadow absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-cream-card text-ink transition hover:bg-cream-deep sm:h-12 sm:w-12"
+        >
+          <WeekArrowIcon direction="left" />
+        </Link>
+        <Link
+          href={`/planner?week=${nextWeekISO}`}
+          aria-label="Next week"
+          className="wobble-btn hand-shadow absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-cream-card text-ink transition hover:bg-cream-deep sm:h-12 sm:w-12"
+        >
+          <WeekArrowIcon direction="right" />
+        </Link>
 
       {!hasRecipes && (
         <p className="wobble-btn mb-6 border-2 border-ink bg-citrus-50 px-4 py-3 text-sm font-bold text-ink">
@@ -355,6 +382,7 @@ export default async function PlannerPage({
         slotStyles={SLOT_STYLES}
         defaultDateISO={mobileDefaultDateISO}
       />
+      </div>
       </FillWeekSelectionProvider>
     </main>
   );
