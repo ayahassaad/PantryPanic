@@ -146,7 +146,12 @@ export function OnboardingWizard({
   const [householdSize, setHouseholdSize] = useState(initialHouseholdSize);
   const [unitSystem, setUnitSystem] = useState<"metric" | "imperial">(initialUnitSystem);
 
-  const step = STEPS[stepIndex];
+  // stepIndex is only ever set via the clamped setStepIndex calls below
+  // (Math.max/min against 0 and STEPS.length - 1), so it's always a valid
+  // index into STEPS — the assertion just tells the compiler what those
+  // clamps already guarantee at runtime (noUncheckedIndexedAccess can't
+  // see through them).
+  const step = STEPS[stepIndex]!;
   const isLastStep = stepIndex === STEPS.length - 1;
 
   // Folded in at submit time rather than kept as its own piece of state —
