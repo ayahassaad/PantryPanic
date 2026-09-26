@@ -88,7 +88,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; Icon: (props: IconProps) =
 // belong on any of them. ("/" itself never actually renders anything —
 // see app/page.tsx, it's a pure server-side redirect — so it never
 // reaches this component either way.)
-const NAV_HIDDEN_PREFIXES = ["/login", "/signup", "/auth", "/onboarding"];
+const NAV_HIDDEN_PREFIXES = ["/login", "/signup", "/auth", "/onboarding", "/reset-password"];
 
 // Dashboard is only "active" on an exact match (it's also the prefix of
 // nothing else); every other item is active for itself and anything
