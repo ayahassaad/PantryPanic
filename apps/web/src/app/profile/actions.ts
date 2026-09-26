@@ -33,6 +33,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 // an oversized database row.
 const ProfileUpdateSchema = z.object({
   fullName: z.string().trim().max(200).optional(),
+  cuisinePreferences: z.array(z.string().trim().min(1).max(50)).max(20),
   dietaryPreferences: z.array(z.string().trim().min(1).max(50)).max(20),
   allergies: z.array(z.string().trim().min(1).max(50)).max(20),
   householdSize: z.coerce.number().int().min(1).max(20),
@@ -50,12 +51,14 @@ export async function updateProfile(formData: FormData) {
   }
 
   const fullNameRaw = (formData.get("fullName") as string) ?? "";
+  const cuisinePreferences = parseList(formData.get("cuisinePreferences") as string | null);
   const dietaryPreferences = parseList(formData.get("dietaryPreferences") as string | null);
   const allergies = parseList(formData.get("allergies") as string | null);
   const avatarFile = formData.get("avatar");
 
   const parsed = ProfileUpdateSchema.safeParse({
     fullName: fullNameRaw.trim() || undefined,
+    cuisinePreferences,
     dietaryPreferences,
     allergies,
     householdSize: formData.get("householdSize"),
@@ -72,6 +75,7 @@ export async function updateProfile(formData: FormData) {
 
   const {
     fullName,
+    cuisinePreferences: validCuisinePreferences,
     dietaryPreferences: validDietaryPreferences,
     allergies: validAllergies,
     householdSize,
@@ -126,6 +130,7 @@ export async function updateProfile(formData: FormData) {
     .from("profiles")
     .update({
       full_name: fullName || null,
+      cuisine_preferences: validCuisinePreferences,
       dietary_preferences: validDietaryPreferences,
       allergies: validAllergies,
       household_size: householdSize,

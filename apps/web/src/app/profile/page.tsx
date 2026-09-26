@@ -8,6 +8,7 @@ import { DeleteAccountButton } from "./delete-account-button";
 
 interface Profile {
   full_name: string | null;
+  cuisine_preferences: string[];
   dietary_preferences: string[];
   allergies: string[];
   avatar_url: string | null;
@@ -37,7 +38,9 @@ export default async function ProfilePage({
   // own row no matter what.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("full_name, dietary_preferences, allergies, avatar_url, household_size, unit_system")
+    .select(
+      "full_name, cuisine_preferences, dietary_preferences, allergies, avatar_url, household_size, unit_system",
+    )
     .eq("id", user.id)
     .single<Profile>();
 
@@ -106,6 +109,20 @@ export default async function ProfilePage({
               defaultValue={profile.full_name ?? ""}
               className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-citrus-600"
             />
+          </label>
+
+          <label className="flex flex-col gap-1.5 text-sm font-bold text-ink-soft">
+            Cuisine preferences
+            <input
+              name="cuisinePreferences"
+              type="text"
+              defaultValue={profile.cuisine_preferences.join(", ")}
+              placeholder="italian, thai, mexican"
+              className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none placeholder:text-ink-faint focus:border-citrus-600"
+            />
+            <span className="text-xs font-normal text-ink-faint">
+              Comma-separated. Set from the sign-up quiz — change it anytime.
+            </span>
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm font-bold text-ink-soft">
