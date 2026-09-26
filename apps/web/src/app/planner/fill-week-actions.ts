@@ -138,10 +138,11 @@ export async function fillWeekWithAi(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("household_size, dietary_preferences, allergies, unit_system")
+    .select("household_size, cuisine_preferences, dietary_preferences, allergies, unit_system")
     .eq("id", user.id)
     .maybeSingle<{
       household_size: number;
+      cuisine_preferences: string[];
       dietary_preferences: string[];
       allergies: string[];
       unit_system: "metric" | "imperial";
@@ -173,6 +174,7 @@ export async function fillWeekWithAi(
       slotLabels: targetSlots.map((s) => s.label),
       ingredients: parsed.data.ingredients,
       constraints: parsed.data.constraints,
+      cuisinePreferences: profile?.cuisine_preferences?.length ? profile.cuisine_preferences : undefined,
       dietaryPreferences: profile?.dietary_preferences?.length ? profile.dietary_preferences : undefined,
       allergies: profile?.allergies?.length ? profile.allergies : undefined,
       unitSystem: profile?.unit_system,

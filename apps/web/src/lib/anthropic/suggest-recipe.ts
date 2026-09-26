@@ -193,6 +193,7 @@ export interface WeekSuggestionInput {
   slotLabels: string[];
   ingredients: string[];
   constraints?: string;
+  cuisinePreferences?: string[];
   dietaryPreferences?: string[];
   allergies?: string[];
   unitSystem?: "metric" | "imperial";
@@ -204,6 +205,9 @@ function buildWeekPrompt(input: WeekSuggestionInput): string {
       ? `Pantry ingredients on hand: ${input.ingredients.join(", ")}.`
       : "No specific pantry ingredients were given — use your judgment for a varied, approachable week of home cooking.",
     input.constraints ? `Constraints: ${input.constraints}.` : null,
+    input.cuisinePreferences?.length
+      ? `Cuisines this person likes (lean toward these where it makes sense, but don't force every meal into one of them): ${input.cuisinePreferences.join(", ")}.`
+      : null,
     input.dietaryPreferences?.length
       ? `Dietary preferences: ${input.dietaryPreferences.join(", ")}.`
       : null,
