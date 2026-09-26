@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Mascot } from "@/components/mascot";
+import { logout } from "@/app/dashboard/actions";
 
 interface IconProps {
   className?: string;
@@ -114,31 +115,50 @@ export function SiteNav({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="hidden border-b-2 border-ink bg-cream-card sm:block">
+      {/* sticky: stays pinned to the top of the viewport as the page
+          scrolls, rather than scrolling away with the content beneath
+          it. z-30 keeps it above ordinary page content but below the
+          z-40 mobile tab bar / z-50 modals, so neither ever fights it. */}
+      <header className="sticky top-0 z-30 hidden border-b-2 border-ink bg-cream-card sm:block">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-10 py-3">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Mascot className="h-9 w-8" />
             <span className="font-display text-lg font-bold text-ink">Pantry Panic</span>
           </Link>
-          <nav className="flex items-center gap-1">
-            {NAV_ITEMS.map(({ href, label, Icon }) => {
-              const active = isActive(pathname, href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex items-center gap-1.5 rounded-full border-2 px-3.5 py-1.5 text-sm font-bold transition ${
-                    active
-                      ? "border-ink bg-tomato-400 text-cream"
-                      : "border-transparent text-ink-soft hover:border-ink-faint hover:text-ink"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav className="flex items-center gap-1">
+              {NAV_ITEMS.map(({ href, label, Icon }) => {
+                const active = isActive(pathname, href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-1.5 rounded-full border-2 px-3.5 py-1.5 text-sm font-bold transition ${
+                      active
+                        ? "border-ink bg-tomato-400 text-cream"
+                        : "border-transparent text-ink-soft hover:border-ink-faint hover:text-ink"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+            {/* Used to live as its own button at the top of the
+                dashboard — moved here so it's reachable from every page,
+                not just that one. Profile still has its own Log out too
+                (a mobile visitor's route to it, since this bar is
+                desktop-only), so this isn't the only way to sign out. */}
+            <form>
+              <button
+                formAction={logout}
+                className="border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
+              >
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
