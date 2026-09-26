@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Patrick_Hand, Nunito } from "next/font/google";
 import "./globals.css";
+import { SiteNav } from "@/components/site-nav";
 
 // Self-hosted via next/font — no separate request to Google Fonts at
 // runtime and no font-swap flash, unlike a <link> tag. Each font exposes
@@ -38,7 +39,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${patrickHand.variable} ${nunito.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <SiteNav>{children}</SiteNav>
+      </body>
     </html>
   );
 }
