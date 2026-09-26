@@ -9,11 +9,17 @@ import { NextResponse } from "next/server";
  * This only works if the redirect URL is on Supabase's allowlist
  * (Authentication -> URL Configuration -> Redirect URLs) — otherwise
  * Supabase silently drops the code and this route gets nothing.
+ *
+ * The only thing that ever lands here is a brand-new signup confirming
+ * their email for the first time (nothing else in the app sends someone
+ * through this route), so the default destination is the onboarding quiz
+ * rather than the dashboard — a returning user's normal /login never
+ * passes through here at all, so this never re-shows the quiz to anyone.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = searchParams.get("next") ?? "/onboarding";
 
   if (code) {
     const supabase = await createClient();
