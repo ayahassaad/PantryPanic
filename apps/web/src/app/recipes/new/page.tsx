@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createRecipe } from "./actions";
@@ -22,13 +21,6 @@ export default async function NewRecipePage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-8 sm:px-10">
-      <Link
-        href="/recipes"
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Recipes
-      </Link>
-
       <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
         New recipe
       </p>

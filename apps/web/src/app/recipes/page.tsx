@@ -71,13 +71,6 @@ export default async function RecipesPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8 sm:px-10">
-      <Link
-        href="/dashboard"
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Dashboard
-      </Link>
-
       <div className="mb-7 flex flex-wrap items-start justify-between gap-6">
         <div className="flex items-center gap-4">
           <Mascot className="h-[70px] w-16 flex-none" />

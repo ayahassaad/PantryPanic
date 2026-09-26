@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { IngredientRows, type IngredientRowInput } from "../../new/ingredient-rows";
@@ -71,13 +70,6 @@ export default async function EditRecipePage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-8 sm:px-10">
-      <Link
-        href={`/recipes/${recipe.id}`}
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; {recipe.title}
-      </Link>
-
       <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
         Edit recipe
       </p>

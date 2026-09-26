@@ -184,13 +184,6 @@ export default async function PlannerPage({
           others. See fill-week-selection.tsx for why this needs a
           context rather than props passed down one path. */}
       <FillWeekSelectionProvider weekStartISO={weekStartISO}>
-      <Link
-        href="/dashboard"
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Dashboard
-      </Link>
-
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">

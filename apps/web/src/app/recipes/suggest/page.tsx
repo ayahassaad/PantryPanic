@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS } from "@pantry-panic/shared";
@@ -24,13 +23,6 @@ export default async function SuggestRecipePage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-8 sm:px-10">
-      <Link
-        href="/recipes"
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Recipes
-      </Link>
-
       <div className="mb-6 flex items-center gap-4">
         <Mascot className="h-[58px] w-[52px] flex-none" />
         <div>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "../dashboard/actions";
@@ -44,13 +43,6 @@ export default async function ProfilePage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col px-6 py-8 sm:px-10">
-      <Link
-        href="/dashboard"
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Dashboard
-      </Link>
-
       <h1 className="-rotate-[0.4deg] mb-2 font-display text-3xl font-bold text-ink">
         Preferences
       </h1>
@@ -188,10 +180,6 @@ export default async function ProfilePage({
       )}
 
       <div className="mt-10 border-t-2 border-dashed border-ink-faint pt-8">
-        <h2 className="mb-5 font-display text-xl font-bold text-ink">
-          Email, password &amp; sign-in
-        </h2>
-
         <div className="flex flex-col gap-8">
           <ChangeEmailForm currentEmail={user.email ?? ""} />
 

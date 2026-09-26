@@ -77,13 +77,6 @@ export default async function RecipeDetailPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-8 sm:px-10">
-      <Link
-        href="/recipes"
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Recipes
-      </Link>
-
       {recipe.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element -- a handful
         // of user-uploaded images doesn't need next/image's optimization

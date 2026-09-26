@@ -109,13 +109,6 @@ export default async function ShoppingListPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-6 py-8 sm:px-10">
-      <Link
-        href={`/planner?week=${weekStartISO}`}
-        className="mb-8 w-fit border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-      >
-        &larr; Planner
-      </Link>
-
       <div className="mb-6 flex items-center gap-4">
         <Mascot className="h-[60px] w-[54px] flex-none" />
         <div>
