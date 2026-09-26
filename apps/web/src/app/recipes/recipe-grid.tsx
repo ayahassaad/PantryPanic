@@ -226,14 +226,49 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
         </button>
       </div>
 
-      {displayedRecipes.length === 0 && (
+      {displayedRecipes.length === 0 && (tab === "favorites" || query) && (
         <p className="text-ink-soft">
           {tab === "favorites"
             ? "No favorites yet — tap the star on a recipe to add it here."
-            : query
-              ? `No recipes match "${query}".`
-              : "No recipes yet."}
+            : `No recipes match "${query}".`}
         </p>
+      )}
+
+      {/* A brand-new account's very first view of this page — no query,
+          not the favorites tab, genuinely zero recipes yet. Worth a real
+          illustrated empty state rather than one dim sentence, since for
+          a first-time visitor (right after the signup quiz) this is
+          likely the very first "real" screen of the app they see. Both
+          buttons at the top of the page already do the same thing — this
+          just repeats them where the eye actually lands when the grid
+          below is empty. */}
+      {displayedRecipes.length === 0 && tab === "all" && !query && (
+        <div className="wobble-a hand-shadow flex flex-col items-center gap-4 border-2 border-ink bg-cream-card px-6 py-12 text-center">
+          <Mascot className="h-20 w-[70px]" />
+          <div>
+            <p className="font-display text-xl font-bold text-ink">
+              Your recipe box is empty
+            </p>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-soft">
+              Add one by hand, or tell AI what&apos;s in your pantry and
+              let it suggest something.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/recipes/new"
+              className="wobble-btn hand-shadow bg-tomato-400 px-5 py-2.5 font-display text-sm font-semibold text-cream transition hover:brightness-105"
+            >
+              + New recipe
+            </Link>
+            <Link
+              href="/recipes/suggest"
+              className="wobble-btn hand-shadow bg-citrus-400 px-5 py-2.5 font-display text-sm font-semibold text-ink transition hover:brightness-105"
+            >
+              &#10022; Suggest with AI
+            </Link>
+          </div>
+        </div>
       )}
 
       <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
