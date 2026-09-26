@@ -343,7 +343,16 @@ export function PlannerCell({
             event.stopPropagation();
             setModalOpen(true);
           }}
-          className="wobble-btn relative z-10 border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition hover:border-ink hover:bg-cream-deep hover:text-ink"
+          // While picking slots for "Fill week with AI" (isSelecting),
+          // this button goes visually and functionally inert —
+          // pointer-events-none lets the click fall straight through to
+          // the box behind it instead of opening the recipe picker, so
+          // tapping anywhere on the cell (including right on top of
+          // "+ Add meal") always just selects it, the same as tapping
+          // any other empty spot in the box.
+          className={`wobble-btn relative z-10 border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition hover:border-ink hover:bg-cream-deep hover:text-ink ${
+            isSelecting ? "pointer-events-none opacity-50" : ""
+          }`}
         >
           + Add meal
         </button>
