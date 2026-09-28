@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import type { MealSlot } from "@pantry-panic/shared";
 import { fillWeekWithAi } from "./fill-week-actions";
@@ -82,6 +90,33 @@ export function FillWeekButton({
 
   const selectedKeys = useMemo(() => Array.from(selected), [selected]);
 
+  // Two CSS-only attempts at capping the caption below the button to the
+  // button's own width both missed: a guessed max-w-[150px] simply wasn't
+  // the button's real rendered width (off by however many px, in either
+  // direction depending on font metrics), and swapping to w-full assuming
+  // percentage widths don't count toward a flex-col's auto width turned
+  // out to be wrong in practice — the browser fell back to sizing the
+  // column by the caption's own full, unwrapped text instead, which was
+  // worse than the first attempt. Rather than guess a third time, this
+  // just measures the button's actual rendered width in the browser and
+  // caps the caption to that exact number of pixels, so the two can never
+  // drift apart again regardless of font, browser, or copy changes.
+  // ResizeObserver (not just a one-time measurement on mount) re-measures
+  // if the button's width ever changes after first paint — e.g. the web
+  // font finishing its swap-in after the very first render.
+  const fillButtonRef = useRef<HTMLButtonElement>(null);
+  const [captionMaxWidth, setCaptionMaxWidth] = useState<number>();
+
+  useLayoutEffect(() => {
+    const button = fillButtonRef.current;
+    if (!button) return;
+    const measure = () => setCaptionMaxWidth(button.offsetWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !isPending) {
@@ -126,6 +161,7 @@ export function FillWeekButton({
     return (
       <div className="flex flex-col items-start gap-1">
         <button
+          ref={fillButtonRef}
           type="button"
           onClick={startSelecting}
           disabled={outOfRequests}
@@ -138,23 +174,23 @@ export function FillWeekButton({
             once it actually hits zero (disabling the button above at the
             same threshold, so the two never disagree).
 
-            w-full is load-bearing, not decorative — and deliberately NOT
-            a guessed max-w-[Npx] (that was tried and still came out
-            wrong, because it was a guess at the button's rendered width
-            rather than a match to it). Percentage widths don't count
-            toward a flex container's own auto/shrink-to-fit width, so
-            `w-full` here can't make this span WIDER than its flex-col
-            parent — only the button above can do that. That makes the
-            parent's real width exactly the button's width, whatever
-            that renders as, and this span then wraps to fit inside it.
-            Without it (or with a fixed max-w guess), the longer "Used
-            all your AI suggestions..." message can render wider than
-            the button — and since this whole thing is one flex item in
-            the Today / Fill week / Shopping list row (see
-            planner/page.tsx), that invisible extra width pushes
-            Shopping list further away than the gap before this button,
-            instead of the three pills reading as evenly spaced. */}
-        <span className="w-full px-1 text-[11px] font-semibold leading-snug text-ink-faint">
+            maxWidth here comes from fillButtonRef's *measured* pixel
+            width (see the useLayoutEffect above), not a CSS guess — see
+            that comment for why. Without capping this span to the
+            button's own width, the longer "Used all your AI
+            suggestions..." message renders wider than the button on one
+            line — and since this whole thing is one flex item in the
+            Today / Fill week / Shopping list row (see planner/page.tsx),
+            that invisible extra width pushes Shopping list further away
+            than the gap before this button, instead of the three pills
+            reading as evenly spaced. Until the very first measurement
+            lands (captionMaxWidth still undefined), it renders unclamped
+            for one instant — useLayoutEffect fires before the browser
+            paints, so in practice that's never actually visible. */}
+        <span
+          className="px-1 text-[11px] font-semibold leading-snug text-ink-faint"
+          style={captionMaxWidth ? { maxWidth: `${captionMaxWidth}px` } : undefined}
+        >
           {outOfRequests
             ? "Used all your AI suggestions for today — resets tomorrow"
             : `${aiRequestsRemaining} of ${aiRequestsMax} AI suggestions left today`}
