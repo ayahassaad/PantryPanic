@@ -37,7 +37,7 @@ export default async function DashboardPage() {
   const firstName = (profile?.full_name?.trim().split(" ")[0] || user.email?.split("@")[0]) ?? "there";
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 sm:px-10">
+    <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] max-w-5xl flex-col justify-center px-6 py-8 sm:px-10">
       {/* hero */}
       <div className="mb-10 flex flex-col items-center gap-6 text-center sm:mb-14 sm:flex-row sm:items-center sm:gap-10 sm:text-left">
         <Mascot className="h-40 w-36 flex-none" />
