@@ -101,13 +101,13 @@ body {
     opacity: 0.65;
   }
   50% {
-    transform: translate(6px, 130px) rotate(4deg);
+    transform: translate(6px, 190px) rotate(4deg);
   }
   85% {
     opacity: 0.65;
   }
   100% {
-    transform: translate(-4px, 300px) rotate(-8deg);
+    transform: translate(-4px, 380px) rotate(-8deg);
     opacity: 0;
   }
 }

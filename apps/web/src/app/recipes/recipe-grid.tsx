@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Mascot } from "@/components/mascot";
+import { FoodMascot, inferFoodKind } from "@/components/food-mascot";
 import { FavoriteButton } from "@/components/favorite-button";
 import {
   DoodleCarrot,
@@ -283,15 +284,18 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
               key={recipe.id}
               className={`wobble-a ${shadow} ${tilt} group relative overflow-hidden border-2 border-ink bg-cream-card p-4 transition duration-200 hover:-translate-y-1 hover:brightness-[1.03]`}
             >
-              {/* Decorative doodles that rain down the card on hover.
-                  They sit above the image box but below the text block
-                  right below (which has its own solid background) — so a
-                  falling doodle just disappears the instant it would
-                  reach any text instead of ever overlapping it. The
-                  animation only exists while .group:hover applies (see
-                  globals.css), so it costs nothing otherwise and always
-                  starts fresh from the top. */}
-              <div className="pointer-events-none absolute inset-0 z-[5]" aria-hidden="true">
+              {/* Decorative doodles that rain down the card on hover, all
+                  the way to the bottom — z-20 puts them above the text
+                  block below (z-10) instead of behind it, so they stay
+                  visible (semi-transparent) over the title/description
+                  rather than disappearing the moment they'd reach any
+                  text. pointer-events-none keeps them purely visual: the
+                  title link, edit/delete and favorite star underneath
+                  still receive every click. The animation only exists
+                  while .group:hover applies (see globals.css), so it
+                  costs nothing otherwise and always starts fresh from
+                  the top. */}
+              <div className="pointer-events-none absolute inset-0 z-20" aria-hidden="true">
                 {cardDoodles(index).map(({ key, Shape, sizeClass, style }) => (
                   <Shape
                     key={key}
@@ -317,7 +321,16 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
                     className="h-full w-full rounded-[16px] object-cover"
                   />
                 ) : (
-                  <Mascot className="h-16 w-14" />
+                  // No uploaded photo — stand in with a goofy food
+                  // character guessed from the recipe's title/description
+                  // (e.g. "carrot" in the title gets the carrot, "egg"
+                  // gets the egg), falling back to the original tomato
+                  // when nothing matches. Same cursor-tracking eyes as
+                  // the tomato mascot on every variant.
+                  <FoodMascot
+                    kind={inferFoodKind(`${recipe.title} ${recipe.description ?? ""}`)}
+                    className="h-16 w-14"
+                  />
                 )}
               </div>
 
