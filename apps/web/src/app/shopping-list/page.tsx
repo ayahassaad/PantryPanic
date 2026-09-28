@@ -8,7 +8,7 @@ import {
 } from "@pantry-panic/shared";
 import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
-import { addManualItem, generateShoppingList } from "./actions";
+import { addManualItem, syncShoppingListFromPlanner } from "./actions";
 import { ShoppingListItemRow } from "./check-toggle-form";
 
 interface ShoppingListItem {
@@ -70,6 +70,13 @@ export default async function ShoppingListPage({
   const weekStartISO = toISODate(weekStart);
   const prevWeekISO = toISODate(addDays(weekStart, -7));
   const nextWeekISO = toISODate(addDays(weekStart, 7));
+
+  // Keeps the list in sync with the planner on every visit — add or drop
+  // a meal, come back here, and it's already reflected. No button to
+  // remember to click; already-checked items and anything you added by
+  // hand both carry over exactly as they did behind the old "regenerate"
+  // button, since this calls the same merge logic that button used to.
+  await syncShoppingListFromPlanner(supabase, user.id, weekStartISO);
 
   const { data: list } = await supabase
     .from("shopping_lists")
@@ -141,19 +148,11 @@ export default async function ShoppingListPage({
         </Link>
       </div>
 
-      <form action={generateShoppingList} className="mb-6 flex flex-wrap items-center gap-3">
-        <input type="hidden" name="weekStartDate" value={weekStartISO} />
-        <button
-          type="submit"
-          className="wobble-btn hand-shadow bg-tomato-400 px-5 py-2.5 font-display text-sm font-semibold text-cream transition hover:brightness-105"
-        >
-          {list ? "Regenerate from planner" : "Generate from planner"}
-        </button>
-        <span className="text-xs text-ink-soft">
-          Pulls ingredients from everything planned for this week.
-          {list ? " Already-checked items stay checked." : ""}
-        </span>
-      </form>
+      <p className="mb-6 text-xs font-bold text-ink-soft">
+        &#10003; Always in sync with your planner — plan or unplan a meal
+        and this list updates automatically. Already-checked items stay
+        checked.
+      </p>
 
       {list && (
         <form action={addManualItem} className="mb-8 flex gap-2">
@@ -174,21 +173,28 @@ export default async function ShoppingListPage({
         </form>
       )}
 
+      {/* syncShoppingListFromPlanner above creates this week's list on
+          every visit, so `!list` should only ever happen if that write
+          itself failed — kept as a fallback rather than something this
+          page expects to show in normal use. */}
       {!list && (
         <p className="wobble-btn mb-6 border-2 border-ink bg-citrus-50 px-4 py-3 text-sm font-bold text-ink">
-          No shopping list yet for this week. Generate one above once
-          you&apos;ve{" "}
+          Couldn&apos;t load this week&apos;s list — try refreshing, or{" "}
           <Link href={`/planner?week=${weekStartISO}`} className="underline">
-            planned some meals
-          </Link>
-          .
+            plan some meals
+          </Link>{" "}
+          and come back.
         </p>
       )}
 
       {list && (!items || items.length === 0) && (
         <p className="wobble-btn mb-6 border-2 border-ink bg-citrus-50 px-4 py-3 text-sm font-bold text-ink">
-          Nothing here yet. Plan some meals for this week and regenerate,
-          or add your own items above.
+          Nothing here yet.{" "}
+          <Link href={`/planner?week=${weekStartISO}`} className="underline">
+            Plan some meals
+          </Link>{" "}
+          for this week and they&apos;ll show up here, or add your own
+          items above.
         </p>
       )}
 

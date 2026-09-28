@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, toISODate } from "@/lib/week";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeUnit, pickDisplayUnit, type NormalizedUnit, type UnitSystem } from "@pantry-panic/shared";
@@ -15,37 +16,27 @@ interface IngredientRow {
   category: string | null;
 }
 
-const GenerateSchema = z.object({
-  weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
-
-// (Re)builds this week's shopping list from whatever's in the planner:
-// one row per recipe assigned that week, scaled by its servings count,
-// merged with everything else already on the list by (name, unit) so the
-// same ingredient from two different recipes becomes one line.
-export async function generateShoppingList(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const parsed = GenerateSchema.safeParse({
-    weekStartDate: formData.get("weekStartDate"),
-  });
-  if (!parsed.success) {
-    return;
-  }
-  const { weekStartDate } = parsed.data;
+// (Re)builds this week's shopping list from whatever's in the planner: one
+// row per recipe assigned that week, scaled by its servings count, merged
+// with everything else already on the list by (name, unit) so the same
+// ingredient from two different recipes becomes one line.
+//
+// Called straight from ShoppingListPage on every visit (see page.tsx) —
+// there's no separate "regenerate" action any more. That keeps the list
+// honest automatically: add or remove a meal in the planner and the next
+// time this page renders, it's already reflected, with no button to
+// remember to click.
+export async function syncShoppingListFromPlanner(
+  supabase: SupabaseClient,
+  userId: string,
+  weekStartDate: string,
+): Promise<void> {
   const weekEndISO = toISODate(addDays(new Date(`${weekStartDate}T00:00:00Z`), 6));
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("unit_system")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle<{ unit_system: UnitSystem }>();
   const unitSystem: UnitSystem = profile?.unit_system ?? "imperial";
 
@@ -53,7 +44,7 @@ export async function generateShoppingList(formData: FormData) {
   const { data: list, error: listError } = await supabase
     .from("shopping_lists")
     .upsert(
-      { user_id: user.id, week_start_date: weekStartDate },
+      { user_id: userId, week_start_date: weekStartDate },
       { onConflict: "user_id,week_start_date" },
     )
     .select("id")
@@ -66,7 +57,7 @@ export async function generateShoppingList(formData: FormData) {
   const { data: entries } = await supabase
     .from("meal_plan_entries")
     .select("recipe_id, servings")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .gte("plan_date", weekStartDate)
     .lte("plan_date", weekEndISO);
 
@@ -202,7 +193,12 @@ export async function generateShoppingList(formData: FormData) {
     await supabase.from("shopping_list_items").insert(newItems);
   }
 
-  revalidatePath("/shopping-list");
+  // No revalidatePath() here on purpose: this now runs straight from
+  // ShoppingListPage's own render (see page.tsx), and calling it to
+  // revalidate the very route currently rendering throws at runtime —
+  // Next.js requires revalidatePath to happen outside of a render. The
+  // page already reads the freshly-written rows immediately after this
+  // returns, so there's nothing stale left for it to invalidate anyway.
 }
 
 const AddItemSchema = z.object({
