@@ -136,8 +136,19 @@ export function FillWeekButton({
         {/* Cosmetic only — see the prop comment above. Reads as a plain
             counter most of the time, and only turns into an explanation
             once it actually hits zero (disabling the button above at the
-            same threshold, so the two never disagree). */}
-        <span className="px-1 text-[11px] font-semibold text-ink-faint">
+            same threshold, so the two never disagree).
+
+            max-w-[150px] is load-bearing, not decorative: without it this
+            span (especially the longer "Used all your AI suggestions..."
+            message) renders on one line wider than the button above it —
+            and since this whole thing is one flex item in the Today /
+            Fill week / Shopping list row (see planner/page.tsx), that
+            invisible extra width pushes Shopping list an inconsistent
+            amount further away than the gap before this button, instead
+            of the three pills reading as evenly spaced. Wrapping it to
+            2–3 short lines keeps this component's real footprint no
+            wider than the button it sits under. */}
+        <span className="max-w-[150px] px-1 text-[11px] font-semibold leading-snug text-ink-faint">
           {outOfRequests
             ? "Used all your AI suggestions for today — resets tomorrow"
             : `${aiRequestsRemaining} of ${aiRequestsMax} AI suggestions left today`}
