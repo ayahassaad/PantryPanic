@@ -117,6 +117,86 @@ export async function removeMealPlanEntry(entryId: string) {
   revalidatePath("/planner");
 }
 
+const RestoreEntrySchema = z.object({
+  recipeId: z.string().uuid(),
+  planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  mealSlot: z.enum(MEAL_SLOTS),
+  servings: z.number().int().min(1).max(20),
+});
+
+// Re-creates a meal plan entry with the exact recipe/date/slot/servings it
+// had a moment ago — the server-side half of the planner's "Undo" chip
+// (see planner-cell.tsx). removeMealPlanEntry above now runs the instant
+// you click the "x", not after the 5s undo window — that used to be
+// deferred with a plain client-side setTimeout, which meant refreshing
+// the page (or just closing the tab) inside that window silently threw
+// the pending delete away, leaving the meal — and its shopping-list
+// ingredients — right where they were. Deleting immediately makes that
+// refresh-brings-it-back bug impossible; "Undo" now works by putting the
+// row back rather than by stopping a delete that hasn't happened yet.
+// Unlike assignMealPlanEntry (which defaults servings from the
+// household size for a brand-new pick), this takes servings explicitly
+// so an undone removal comes back exactly as it was, not reset to the
+// household default.
+export async function restoreMealPlanEntry(
+  recipeId: string,
+  planDate: string,
+  mealSlot: MealSlot,
+  servings: number,
+): Promise<{ error?: string; entryId?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const parsed = RestoreEntrySchema.safeParse({ recipeId, planDate, mealSlot, servings });
+  if (!parsed.success) {
+    return { error: "Couldn't restore that meal." };
+  }
+
+  // Confirm the recipe's still actually visible to this user, same
+  // reasoning (and same check) as assignMealPlanEntry above.
+  const { data: recipe } = await supabase
+    .from("recipes")
+    .select("id")
+    .eq("id", parsed.data.recipeId)
+    .maybeSingle();
+
+  if (!recipe) {
+    return { error: "Couldn't restore that meal." };
+  }
+
+  // Upsert on the same (user_id, plan_date, meal_slot) constraint
+  // assignMealPlanEntry uses — if something else already filled this
+  // slot during the undo window, this intentionally overwrites it back
+  // to the undone meal rather than erroring, same as a normal re-pick.
+  const { data: upserted, error } = await supabase
+    .from("meal_plan_entries")
+    .upsert(
+      {
+        user_id: user.id,
+        recipe_id: parsed.data.recipeId,
+        plan_date: parsed.data.planDate,
+        meal_slot: parsed.data.mealSlot,
+        servings: parsed.data.servings,
+      },
+      { onConflict: "user_id,plan_date,meal_slot" },
+    )
+    .select("id")
+    .single();
+
+  if (error || !upserted) {
+    return { error: "Couldn't restore that meal." };
+  }
+
+  revalidatePath("/planner");
+  return { entryId: upserted.id };
+}
+
 const UpdateServingsSchema = z.object({
   entryId: z.string().uuid(),
   servings: z.number().int().min(1).max(20),

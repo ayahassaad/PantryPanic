@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { MealSlot } from "@pantry-panic/shared";
 import { DoodleCarrot, DoodleGrapes } from "@/components/food-doodles";
-import { removeMealPlanEntry, updateMealPlanServings } from "./actions";
+import { removeMealPlanEntry, restoreMealPlanEntry, updateMealPlanServings } from "./actions";
 import { RecipeModal } from "./recipe-modal";
 import type { AssignedEntry } from "./recipe-actions";
 import { useFillWeekSelection } from "./fill-week-selection";
@@ -37,9 +37,10 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-// How long a removed meal stays reversible before the delete actually
-// hits the server — long enough to catch a misclick, short enough that
-// it doesn't feel like the click didn't register.
+// How long the "Undo" chip stays up after removing a meal. The delete
+// itself now happens immediately (see handleRemove below) — this only
+// controls how long you have to change your mind before the cell
+// settles into its empty "+ Add meal" state.
 const UNDO_WINDOW_MS = 5000;
 const MIN_SERVINGS = 1;
 const MAX_SERVINGS = 20;
@@ -125,6 +126,17 @@ export function PlannerCell({
     };
   }, []);
 
+  // Deletes right away — not after the undo window — so the meal (and
+  // whatever it contributed to the shopping list, which rebuilds itself
+  // from the planner on every visit) is genuinely gone on the server
+  // straight away, not just hidden client-side. This used to be
+  // deferred with a plain setTimeout that fired the actual delete 5s
+  // later: refreshing the page (or just closing the tab) inside that
+  // window unmounted this component first, which cancelled the timer
+  // before it ever got a chance to run — so the "removed" meal, and its
+  // shopping-list ingredients, would silently still be there. Undo now
+  // works by putting the row back (see handleUndo) rather than by
+  // racing to cancel a delete before it happens.
   function handleRemove() {
     if (!entry) {
       return;
@@ -133,22 +145,27 @@ export function PlannerCell({
     setEntry(null);
     setPendingRemoval(removedEntry);
 
+    startTransition(async () => {
+      try {
+        await removeMealPlanEntry(removedEntry.id);
+      } catch (error) {
+        if (isRedirectError(error)) {
+          throw error;
+        }
+        // Couldn't actually delete it — put it back rather than leave
+        // the planner quietly wrong.
+        setEntry(removedEntry);
+        setPendingRemoval(null);
+        return;
+      }
+    });
+
+    // Purely cosmetic from here: just swaps the "Removed / Undo" chip
+    // back to the empty "+ Add meal" cell once the window's up. The
+    // delete above has already happened by then regardless.
     removalTimer.current = setTimeout(() => {
       removalTimer.current = null;
       setPendingRemoval(null);
-
-      startTransition(async () => {
-        try {
-          await removeMealPlanEntry(removedEntry.id);
-        } catch (error) {
-          if (isRedirectError(error)) {
-            throw error;
-          }
-          // Couldn't actually delete it — put it back rather than leave
-          // the planner quietly wrong.
-          setEntry(removedEntry);
-        }
-      });
     }, UNDO_WINDOW_MS);
   }
 
@@ -157,10 +174,47 @@ export function PlannerCell({
       clearTimeout(removalTimer.current);
       removalTimer.current = null;
     }
-    if (pendingRemoval) {
-      setEntry(pendingRemoval);
-      setPendingRemoval(null);
+    const removed = pendingRemoval;
+    if (!removed) {
+      return;
     }
+    setPendingRemoval(null);
+
+    // recipeId is only ever missing here if the recipe it pointed at
+    // isn't visible to this user any more (see the "Recipe removed"
+    // rendering below) — vanishingly rare, and there's no id left to
+    // restore, so undo can't bring this particular one back.
+    if (!removed.recipeId) {
+      return;
+    }
+
+    // Bring the cell back on screen right away; if the re-insert below
+    // fails, drop it again rather than show a meal that isn't actually
+    // saved.
+    setEntry(removed);
+    startTransition(async () => {
+      try {
+        const result = await restoreMealPlanEntry(
+          removed.recipeId as string,
+          dateISO,
+          slot,
+          removed.servings,
+        );
+        if (result.error || !result.entryId) {
+          setEntry(null);
+          return;
+        }
+        // The restore is a fresh insert, so it gets a new row id — swap
+        // it in so a follow-up remove/servings-change targets the right
+        // row.
+        setEntry({ ...removed, id: result.entryId });
+      } catch (error) {
+        if (isRedirectError(error)) {
+          throw error;
+        }
+        setEntry(null);
+      }
+    });
   }
 
   function adjustServings(delta: number) {
