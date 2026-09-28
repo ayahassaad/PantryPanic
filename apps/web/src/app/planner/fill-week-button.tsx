@@ -138,17 +138,23 @@ export function FillWeekButton({
             once it actually hits zero (disabling the button above at the
             same threshold, so the two never disagree).
 
-            max-w-[150px] is load-bearing, not decorative: without it this
-            span (especially the longer "Used all your AI suggestions..."
-            message) renders on one line wider than the button above it —
-            and since this whole thing is one flex item in the Today /
-            Fill week / Shopping list row (see planner/page.tsx), that
-            invisible extra width pushes Shopping list an inconsistent
-            amount further away than the gap before this button, instead
-            of the three pills reading as evenly spaced. Wrapping it to
-            2–3 short lines keeps this component's real footprint no
-            wider than the button it sits under. */}
-        <span className="max-w-[150px] px-1 text-[11px] font-semibold leading-snug text-ink-faint">
+            w-full is load-bearing, not decorative — and deliberately NOT
+            a guessed max-w-[Npx] (that was tried and still came out
+            wrong, because it was a guess at the button's rendered width
+            rather than a match to it). Percentage widths don't count
+            toward a flex container's own auto/shrink-to-fit width, so
+            `w-full` here can't make this span WIDER than its flex-col
+            parent — only the button above can do that. That makes the
+            parent's real width exactly the button's width, whatever
+            that renders as, and this span then wraps to fit inside it.
+            Without it (or with a fixed max-w guess), the longer "Used
+            all your AI suggestions..." message can render wider than
+            the button — and since this whole thing is one flex item in
+            the Today / Fill week / Shopping list row (see
+            planner/page.tsx), that invisible extra width pushes
+            Shopping list further away than the gap before this button,
+            instead of the three pills reading as evenly spaced. */}
+        <span className="w-full px-1 text-[11px] font-semibold leading-snug text-ink-faint">
           {outOfRequests
             ? "Used all your AI suggestions for today — resets tomorrow"
             : `${aiRequestsRemaining} of ${aiRequestsMax} AI suggestions left today`}
