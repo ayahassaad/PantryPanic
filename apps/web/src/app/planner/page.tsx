@@ -241,7 +241,15 @@ export default async function PlannerPage({
           <RotatingTip tips={PLANNER_TIPS} startIndex={tipStartIndex} />
         </div>
 
-        <div className="flex flex-none flex-wrap items-center gap-2.5">
+        {/* items-start (not items-center): FillWeekButton's idle state is
+            a button + a small caption stacked in its own flex-col box,
+            taller than the plain Today/Shopping list pills either side of
+            it — items-center was vertically centering that whole taller
+            box against the row, which visibly dropped the two plain pills
+            below the Fill-week button's top edge instead of lining up all
+            three. items-start aligns every pill's top edge regardless of
+            what sits underneath one of them. */}
+        <div className="flex flex-none flex-wrap items-start gap-2.5">
           <Link
             href={`/planner?week=${todayISO}`}
             className="wobble-btn border-2 border-ink bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
