@@ -4,10 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { Mascot } from "@/components/mascot";
 import { RecipeGrid, type RecipeListItem } from "./recipe-grid";
 
-// The raw shape this page's query returns — everything RecipeListItem
-// has except isOwner (which doesn't exist as a column; it's derived
-// below from owner_id, which the client never needs to see directly).
-type RecipeRow = Omit<RecipeListItem, "isOwner"> & { owner_id: string | null };
+// The raw shape this page's own recipes query returns — everything
+// RecipeListItem has except isOwner and ingredientNames, neither of
+// which is a column on `recipes` itself: isOwner is derived below from
+// owner_id (which the client never needs to see directly), and
+// ingredientNames comes from a separate recipe_ingredients query.
+type RecipeRow = Omit<RecipeListItem, "isOwner" | "ingredientNames"> & {
+  owner_id: string | null;
+};
 
 function buildHref(params: { q?: string; tab?: string }): string {
   const search = new URLSearchParams();
@@ -57,6 +61,32 @@ export default async function RecipesPage({
     supabase.from("recipe_favorites").select("recipe_id").eq("owner_id", user.id),
   ]);
 
+  // A card with no uploaded photo shows a goofy food-character placeholder
+  // guessed from what the recipe's actually made of (see FoodMascot /
+  // inferFoodKind) — which means this page needs each recipe's ingredient
+  // names, not just its title/description. Same "fetch by .in() once,
+  // group in memory" shape as shopping-list/actions.ts uses for the same
+  // table. One query for every recipe on the page rather than one per
+  // card — recipe_ingredients' select RLS policy already limits this to
+  // rows on recipes this user can actually see, same as the recipes query
+  // itself above.
+  const recipeIds = (recipeRows ?? []).map((recipe) => recipe.id);
+  const { data: ingredientRows } =
+    recipeIds.length > 0
+      ? await supabase
+          .from("recipe_ingredients")
+          .select("recipe_id, name")
+          .in("recipe_id", recipeIds)
+          .returns<{ recipe_id: string; name: string }[]>()
+      : { data: [] as { recipe_id: string; name: string }[] };
+
+  const ingredientNamesByRecipe = new Map<string, string[]>();
+  for (const ingredient of ingredientRows ?? []) {
+    const names = ingredientNamesByRecipe.get(ingredient.recipe_id) ?? [];
+    names.push(ingredient.name);
+    ingredientNamesByRecipe.set(ingredient.recipe_id, names);
+  }
+
   // Edit/delete on a card only make sense for a recipe this user actually
   // created themselves (by hand or via the AI suggester) — starter/seed
   // recipes have owner_id null and aren't anyone's to change.
@@ -64,6 +94,7 @@ export default async function RecipesPage({
     ({ owner_id, ...recipe }) => ({
       ...recipe,
       isOwner: owner_id === user.id,
+      ingredientNames: ingredientNamesByRecipe.get(recipe.id) ?? [],
     }),
   );
 

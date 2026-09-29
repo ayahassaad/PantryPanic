@@ -26,15 +26,26 @@ export type FoodKind =
   | "grape"
   | "cheese"
   | "mug"
-  | "broccoli";
+  | "broccoli"
+  | "fish"
+  | "chicken"
+  | "beef";
 
-// Keyword match against a recipe's title + description — the only text
-// every card already has client-side, without an extra per-recipe
-// ingredients query just to pick an icon. Order matters: first match wins,
-// so more distinctive words are checked before generic ones. Falls back to
-// the original tomato for anything that doesn't match a known ingredient.
+// Keyword match, checked first against the recipe's actual ingredient
+// names (the real "what's this dish made of" signal) and only falling
+// back to its title + description if nothing in the ingredient list
+// matches — see inferFoodKind below. Order matters within each pass:
+// first match wins, so more distinctive/defining words are checked
+// before generic ones — proteins in particular are checked ahead of
+// things like "pepper" or "cheese" that are just as likely to show up
+// as a minor ingredient in a dish some other protein actually defines.
+// Falls back to the original tomato for anything that doesn't match a
+// known ingredient.
 const KIND_PATTERNS: Array<[FoodKind, RegExp]> = [
   ["egg", /\begg(s)?\b/i],
+  ["chicken", /\b(chicken|turkey|poultry)\b/i],
+  ["beef", /\b(beef|steak|pork|bacon|ham|sausage|lamb|meatballs?|ground meat)\b/i],
+  ["fish", /\b(fish|salmon|tuna|cod|tilapia|trout|halibut|shrimp|prawns?|scallops?|crab|anchov(y|ies))\b/i],
   ["carrot", /\bcarrots?\b/i],
   ["citrus", /\b(lemons?|limes?|oranges?|citrus|grapefruit)\b/i],
   ["grape", /\b(grapes?|wine)\b/i],
@@ -44,9 +55,26 @@ const KIND_PATTERNS: Array<[FoodKind, RegExp]> = [
   ["pepper", /\b(peppers?|chil(i|e|li)(es)?|jalape[nñ]os?|capsicum)\b/i],
 ];
 
-export function inferFoodKind(text: string): FoodKind {
+// ingredientNames (when there are any) is checked first and entirely
+// before titleAndDescription is looked at at all — a recipe's actual
+// ingredient list is a much more reliable "main ingredient" signal than
+// whatever words happen to be in its title, so a real ingredient match
+// always wins over a title-only guess rather than the two being merged
+// and left to pattern order to referee. Only when nothing in the
+// ingredient list matches anything does this fall back to reading the
+// title/description the way this used to work for every recipe (still
+// needed for the handful of places — the planner's own "type a new
+// recipe in" flow, mainly — that don't have a structured ingredient list
+// to draw on at all).
+export function inferFoodKind(titleAndDescription: string, ingredientNames: string[] = []): FoodKind {
+  if (ingredientNames.length > 0) {
+    const ingredientText = ingredientNames.join(" ");
+    for (const [kind, pattern] of KIND_PATTERNS) {
+      if (pattern.test(ingredientText)) return kind;
+    }
+  }
   for (const [kind, pattern] of KIND_PATTERNS) {
-    if (pattern.test(text)) return kind;
+    if (pattern.test(titleAndDescription)) return kind;
   }
   return "tomato";
 }
@@ -253,6 +281,72 @@ function FoodBody({ kind }: { kind: FoodKind }) {
           <circle cx="42" cy="88" r="30" fill="oklch(58% 0.14 148)" stroke={STROKE} strokeWidth="4" />
           <circle cx="98" cy="88" r="30" fill="oklch(58% 0.14 148)" stroke={STROKE} strokeWidth="4" />
           <circle cx="70" cy="58" r="34" fill="oklch(58% 0.14 148)" stroke={STROKE} strokeWidth="4" />
+        </>
+      );
+    case "fish":
+      return (
+        <>
+          <path
+            d="M74,34 C104,36 122,62 122,92 C122,122 104,148 74,150 C46,150 24,126 20,92 C24,58 46,34 74,34 Z"
+            fill="oklch(72% 0.1 220)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M20,92 L2,70 L4,92 L2,114 Z"
+            fill="oklch(72% 0.1 220)"
+            stroke={STROKE}
+            strokeWidth="3.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M44,68 C54,63 64,63 72,68 M40,110 C52,117 66,117 78,110"
+            fill="none"
+            stroke="oklch(56% 0.09 220)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "chicken":
+      return (
+        <>
+          <path
+            d="M70,34 C46,34 30,54 32,80 C34,108 50,130 74,132 C96,134 112,116 112,92 C112,64 96,34 70,34 Z"
+            fill="oklch(70% 0.12 55)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M60,131 C57,140 58,147 65,152"
+            fill="none"
+            stroke="oklch(90% 0.015 85)"
+            strokeWidth="9"
+            strokeLinecap="round"
+          />
+          <ellipse cx="67" cy="152" rx="9" ry="5.5" fill="oklch(90% 0.015 85)" stroke={STROKE} strokeWidth="2.5" />
+          <path d="M52,72 L64,80 M88,72 L76,80" stroke="oklch(54% 0.1 55)" strokeWidth="2.5" strokeLinecap="round" />
+        </>
+      );
+    case "beef":
+      return (
+        <>
+          <path
+            d="M30,52 C26,40 38,32 50,36 C66,26 96,30 108,48 C120,64 118,88 108,104 C114,118 106,132 90,136 C76,148 54,148 40,134 C24,128 20,108 28,92 C18,78 20,62 30,52 Z"
+            fill="oklch(50% 0.13 25)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M38,60 L96,104 M46,96 L100,58 M32,80 L82,116"
+            stroke="oklch(36% 0.1 30)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            opacity="0.75"
+          />
         </>
       );
     case "tomato":

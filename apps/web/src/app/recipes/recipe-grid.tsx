@@ -31,6 +31,11 @@ export interface RecipeListItem {
   // anyone's to edit or delete. Computed server-side in page.tsx so the
   // client never needs to see raw owner_id values.
   isOwner: boolean;
+  // Every recipe_ingredients.name for this recipe, fetched separately in
+  // page.tsx — the real "what's this made of" signal the no-photo
+  // placeholder below is guessed from, ahead of just title/description
+  // text. Empty for a recipe with no structured ingredient rows.
+  ingredientNames: string[];
 }
 
 // A Next.js redirect() (e.g. "not logged in any more") works by throwing
@@ -322,13 +327,20 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
                   />
                 ) : (
                   // No uploaded photo — stand in with a goofy food
-                  // character guessed from the recipe's title/description
-                  // (e.g. "carrot" in the title gets the carrot, "egg"
-                  // gets the egg), falling back to the original tomato
-                  // when nothing matches. Same cursor-tracking eyes as
-                  // the tomato mascot on every variant.
+                  // character guessed from what the recipe is actually
+                  // made of: its ingredient names first (e.g. "salmon"
+                  // anywhere in the ingredient list gets the fish,
+                  // "chicken thighs" gets the chicken), falling back to
+                  // matching the title/description only for a recipe
+                  // with no structured ingredients at all, then to the
+                  // original tomato if nothing matches either. Same
+                  // cursor-tracking eyes as the tomato mascot on every
+                  // variant.
                   <FoodMascot
-                    kind={inferFoodKind(`${recipe.title} ${recipe.description ?? ""}`)}
+                    kind={inferFoodKind(
+                      `${recipe.title} ${recipe.description ?? ""}`,
+                      recipe.ingredientNames,
+                    )}
                     className="h-16 w-14"
                   />
                 )}
