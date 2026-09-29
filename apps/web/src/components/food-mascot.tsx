@@ -370,30 +370,32 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "chicken":
       return (
         <>
-          {/* A proper drumstick shape (meat lobe + angled bone with a
-              knuckle) rather than the earlier version, whose "bone"
-              was too thin and short to read as anything at all. */}
+          {/* Third time's the charm: a plain round meat body (same
+              "clear circle" language every other round kind — citrus,
+              mushroom cap — already uses, so it doesn't need its own
+              odd silhouette), and instead of trying to squeeze a whole
+              drumstick shape in next to the character's own legs
+              (which kept fighting each other for space), the right leg
+              IS the bone — a thicker pale stroke retracing that exact
+              same shared leg path, capped with a round knuckle instead
+              of the thin foot. One less shape competing for room, and
+              the bone reads clearly because it's not crammed into the
+              body at all. */}
+          <circle cx="70" cy="88" r="40" fill="oklch(72% 0.12 55)" stroke={STROKE} strokeWidth="4.5" />
           <path
-            d="M68,34 C94,34 112,54 108,80 C104,106 82,124 56,118 C34,112 20,92 24,68 C28,46 46,34 68,34 Z"
-            fill="oklch(72% 0.12 55)"
-            stroke={STROKE}
-            strokeWidth="4.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M78,104 C90,114 100,126 102,142"
-            fill="none"
-            stroke="oklch(90% 0.02 85)"
-            strokeWidth="14"
-            strokeLinecap="round"
-          />
-          <circle cx="104" cy="146" r="11" fill="oklch(90% 0.02 85)" stroke={STROKE} strokeWidth="3" />
-          <path
-            d="M46,58 L54,50 M70,52 L74,42 M92,64 L100,56"
+            d="M48,54 C53,49 61,47 67,50 M77,44 C84,42 92,45 96,52"
             stroke="oklch(56% 0.1 55)"
-            strokeWidth="2.5"
+            strokeWidth="2.3"
             strokeLinecap="round"
+            fill="none"
           />
+          {/* Retraces the shared right-leg path from FoodMascot above
+              (M82,120 C90,133 98,140 108,145) — same curve, just drawn
+              thicker and pale so it sits on top of the thin black leg
+              underneath instead of needing a leg of its own. */}
+          <path d="M82,120 C90,133 98,140 108,145" fill="none" stroke={STROKE} strokeWidth="18" strokeLinecap="round" />
+          <path d="M82,120 C90,133 98,140 108,145" fill="none" stroke="oklch(92% 0.02 85)" strokeWidth="12" strokeLinecap="round" />
+          <circle cx="108" cy="145" r="13" fill="oklch(92% 0.02 85)" stroke={STROKE} strokeWidth="3" />
         </>
       );
     case "beef":
