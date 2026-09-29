@@ -29,30 +29,68 @@ export type FoodKind =
   | "broccoli"
   | "fish"
   | "chicken"
-  | "beef";
+  | "beef"
+  | "shrimp"
+  | "onion"
+  | "garlic"
+  | "mushroom"
+  | "potato"
+  | "rice"
+  | "pasta"
+  | "bread"
+  | "corn"
+  | "avocado"
+  | "spinach"
+  | "banana"
+  | "apple"
+  | "chocolate";
 
 // Keyword match, checked first against the recipe's actual ingredient
 // names (the real "what's this dish made of" signal) and only falling
 // back to its title + description if nothing in the ingredient list
-// matches — see inferFoodKind below. Order matters within each pass:
-// first match wins, so more distinctive/defining words are checked
-// before generic ones — proteins in particular are checked ahead of
-// things like "pepper" or "cheese" that are just as likely to show up
-// as a minor ingredient in a dish some other protein actually defines.
-// Falls back to the original tomato for anything that doesn't match a
-// known ingredient.
+// matches — see inferFoodKind below.
+//
+// Order matters within each pass — first match wins — and it's grouped
+// into rough tiers, most-defining first, rather than alphabetical or
+// however these happened to get added:
+//   1. proteins (egg, shrimp, fish, chicken, beef)
+//   2. carbs/mains (rice, pasta, bread, potato, corn)
+//   3. produce that usually IS the dish (avocado, banana, apple,
+//      mushroom, broccoli, spinach, carrot, citrus, grape)
+//   4. flavor/dairy components (cheese, chocolate, mug)
+//   5. aromatics that show up in almost everything but rarely define a
+//      dish on their own (pepper, onion, garlic)
+// That ordering is what keeps "garlic butter shrimp" landing on shrimp
+// instead of garlic, and "chicken and rice" landing on chicken instead
+// of rice — without it, the near-universal aromatics at the bottom
+// would win almost every match just by being common, not by being what
+// the dish is actually about.
 const KIND_PATTERNS: Array<[FoodKind, RegExp]> = [
   ["egg", /\begg(s)?\b/i],
+  ["shrimp", /\b(shrimp|prawns?|scallops?|crab)\b/i],
+  ["fish", /\b(fish|salmon|tuna|cod|tilapia|trout|halibut|anchov(y|ies))\b/i],
   ["chicken", /\b(chicken|turkey|poultry)\b/i],
   ["beef", /\b(beef|steak|pork|bacon|ham|sausage|lamb|meatballs?|ground meat)\b/i],
-  ["fish", /\b(fish|salmon|tuna|cod|tilapia|trout|halibut|shrimp|prawns?|scallops?|crab|anchov(y|ies))\b/i],
+  ["rice", /\brice\b/i],
+  ["pasta", /\b(pasta|spaghetti|noodles?|penne|fettuccine|macaroni|linguine|lasagn(a|e))\b/i],
+  ["bread", /\b(bread|baguette|toast|bun|rolls?)\b/i],
+  ["potato", /\bpotato(es)?\b/i],
+  ["corn", /\bcorn\b/i],
+  ["avocado", /\bavocados?\b/i],
+  ["banana", /\bbananas?\b/i],
+  ["apple", /\bapples?\b/i],
+  ["mushroom", /\bmushrooms?\b/i],
+  ["broccoli", /\bbroccoli\b/i],
+  ["spinach", /\b(spinach|kale|arugula|lettuce|leafy greens?)\b/i],
   ["carrot", /\bcarrots?\b/i],
   ["citrus", /\b(lemons?|limes?|oranges?|citrus|grapefruit)\b/i],
   ["grape", /\b(grapes?|wine)\b/i],
   ["cheese", /\b(cheese|parmesan|mozzarella|cheddar|feta|ricotta)\b/i],
+  ["chocolate", /\b(chocolate|cocoa|cacao)\b/i],
   ["mug", /\b(coffee|espresso|latte|tea|mug)\b/i],
-  ["broccoli", /\bbroccoli\b/i],
   ["pepper", /\b(peppers?|chil(i|e|li)(es)?|jalape[nñ]os?|capsicum)\b/i],
+  ["onion", /\bonions?\b/i],
+  ["garlic", /\bgarlic\b/i],
 ];
 
 // ingredientNames (when there are any) is checked first and entirely
@@ -346,6 +384,290 @@ function FoodBody({ kind }: { kind: FoodKind }) {
             strokeWidth="3.5"
             strokeLinecap="round"
             opacity="0.75"
+          />
+        </>
+      );
+    case "shrimp":
+      return (
+        <>
+          <path
+            d="M96,34 C118,42 128,66 118,90 C132,96 138,116 126,132 C112,148 88,150 72,138 C60,128 58,112 68,100 C54,98 44,86 48,70 C52,54 68,44 84,46 C86,40 90,36 96,34 Z"
+            fill="oklch(70% 0.16 40)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M60,110 L44,118 M64,120 L50,132 M70,128 L60,142"
+            fill="none"
+            stroke="oklch(70% 0.16 40)"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M100,40 C104,32 112,28 120,30"
+            fill="none"
+            stroke="oklch(56% 0.13 40)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "onion":
+      return (
+        <>
+          <path
+            d="M70,40 C94,44 108,68 106,96 C104,124 88,146 70,148 C52,146 36,124 34,96 C32,68 46,44 70,40 Z"
+            fill="oklch(88% 0.04 85)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M70,148 C58,148 50,132 54,110 M70,148 C82,148 90,132 86,110"
+            fill="none"
+            stroke="oklch(70% 0.05 70)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            opacity="0.7"
+          />
+          <path
+            d="M62,40 C58,26 62,14 70,8 M78,40 C82,26 78,14 70,8"
+            fill="none"
+            stroke="oklch(58% 0.12 145)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "garlic":
+      return (
+        <>
+          <path
+            d="M70,42 C92,42 106,64 104,90 C102,116 88,138 70,140 C52,138 38,116 36,90 C34,64 48,42 70,42 Z"
+            fill="oklch(96% 0.01 85)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M70,42 L70,138 M52,50 C48,80 50,112 58,134 M88,50 C92,80 90,112 82,134"
+            fill="none"
+            stroke="oklch(85% 0.02 85)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M64,42 C60,28 64,16 70,10 M76,42 C80,28 76,16 70,10"
+            fill="none"
+            stroke="oklch(60% 0.1 90)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "mushroom":
+      return (
+        <>
+          <path
+            d="M28,78 C28,50 46,32 70,32 C94,32 112,50 112,78 C112,84 108,88 100,88 L40,88 C32,88 28,84 28,78 Z"
+            fill="oklch(70% 0.1 40)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <rect x="54" y="88" width="32" height="56" rx="12" fill="oklch(94% 0.015 85)" stroke={STROKE} strokeWidth="4" />
+          <circle cx="46" cy="60" r="5" fill="oklch(90% 0.02 85)" opacity="0.8" />
+          <circle cx="66" cy="50" r="4" fill="oklch(90% 0.02 85)" opacity="0.8" />
+          <circle cx="90" cy="62" r="5" fill="oklch(90% 0.02 85)" opacity="0.8" />
+        </>
+      );
+    case "potato":
+      return (
+        <>
+          <path
+            d="M70,38 C96,34 116,54 116,82 C116,112 100,142 70,146 C42,142 26,114 28,84 C30,54 48,42 70,38 Z"
+            fill="oklch(66% 0.06 70)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <circle cx="52" cy="70" r="3" fill="oklch(50% 0.05 70)" opacity="0.6" />
+          <circle cx="86" cy="60" r="3" fill="oklch(50% 0.05 70)" opacity="0.6" />
+          <circle cx="90" cy="100" r="3" fill="oklch(50% 0.05 70)" opacity="0.6" />
+          <circle cx="56" cy="112" r="3" fill="oklch(50% 0.05 70)" opacity="0.6" />
+        </>
+      );
+    case "rice":
+      return (
+        <>
+          <path
+            d="M24,86 C24,80 30,78 70,78 C110,78 116,80 116,86 C116,112 96,140 70,140 C44,140 24,112 24,86 Z"
+            fill="oklch(96% 0.01 85)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M40,78 C44,58 56,46 70,46 C84,46 96,58 100,78 Z"
+            fill={CREAM}
+            stroke={STROKE}
+            strokeWidth="3.5"
+            strokeLinejoin="round"
+          />
+          <path d="M52,60 L54,50 M70,56 L70,44 M86,60 L84,50" stroke="oklch(80% 0.02 85)" strokeWidth="2.5" strokeLinecap="round" />
+        </>
+      );
+    case "pasta":
+      return (
+        <>
+          <circle cx="70" cy="94" r="52" fill="oklch(88% 0.08 85)" stroke={STROKE} strokeWidth="4.5" />
+          <path
+            d="M30,80 C50,70 46,100 66,92 C86,84 82,112 104,100 M34,104 C54,96 50,124 72,116 C90,110 88,130 102,124"
+            fill="none"
+            stroke="oklch(75% 0.1 70)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <circle cx="88" cy="70" r="8" fill="oklch(48% 0.13 30)" stroke={STROKE} strokeWidth="2.5" />
+        </>
+      );
+    case "bread":
+      return (
+        <>
+          <path
+            d="M24,100 C24,64 44,36 70,36 C96,36 116,64 116,100 C116,124 96,142 70,142 C44,142 24,124 24,100 Z"
+            fill="oklch(78% 0.1 70)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M48,56 C52,44 60,38 70,38 C80,38 88,44 92,56"
+            fill="oklch(88% 0.08 75)"
+            stroke={STROKE}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path d="M54,64 L60,86 M70,58 L70,88 M86,64 L80,86" stroke="oklch(58% 0.09 60)" strokeWidth="3" strokeLinecap="round" />
+        </>
+      );
+    case "corn":
+      return (
+        <>
+          <path
+            d="M70,26 C90,26 100,44 98,72 C96,102 88,138 70,148 C52,138 44,102 42,72 C40,44 50,26 70,26 Z"
+            fill="oklch(84% 0.13 95)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M52,50 L88,50 M50,66 L90,66 M50,82 L90,82 M52,98 L88,98 M56,114 L84,114"
+            stroke="oklch(70% 0.1 85)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M58,26 C50,14 36,10 24,14 M82,26 C90,14 104,10 116,14"
+            fill="none"
+            stroke="oklch(58% 0.12 145)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "avocado":
+      return (
+        <>
+          <path
+            d="M70,30 C96,34 112,60 110,92 C108,124 90,148 70,148 C50,148 32,124 30,92 C28,60 44,34 70,30 Z"
+            fill="oklch(58% 0.12 140)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M70,44 C88,48 100,68 98,92 C96,116 82,134 70,134 C58,134 44,116 42,92 C40,68 52,48 70,44 Z"
+            fill="oklch(88% 0.13 120)"
+            stroke={STROKE}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <circle cx="70" cy="92" r="20" fill="oklch(55% 0.14 50)" stroke={STROKE} strokeWidth="3" />
+        </>
+      );
+    case "spinach":
+      return (
+        <>
+          <path
+            d="M70,40 C48,36 30,52 30,78 C30,100 46,116 70,116 C94,116 110,100 110,78 C110,52 92,36 70,40 Z"
+            fill="oklch(60% 0.13 142)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M70,40 L70,116 M46,58 C54,70 58,92 54,108 M94,58 C86,70 82,92 86,108"
+            fill="none"
+            stroke="oklch(46% 0.11 140)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+          <path d="M70,116 C66,128 66,140 70,150" stroke="oklch(46% 0.11 140)" strokeWidth="4" strokeLinecap="round" fill="none" />
+        </>
+      );
+    case "banana":
+      return (
+        <>
+          <path
+            d="M40,132 C30,110 32,80 50,54 C64,34 88,24 108,28 C112,36 110,46 100,50 C82,58 66,72 56,94 C50,108 52,120 60,130 C52,138 44,138 40,132 Z"
+            fill="oklch(86% 0.14 100)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path d="M100,26 C104,20 112,18 118,22" stroke="oklch(58% 0.1 90)" strokeWidth="3" strokeLinecap="round" fill="none" />
+          <path
+            d="M50,60 C64,48 82,40 98,38"
+            stroke="oklch(72% 0.1 90)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.7"
+          />
+        </>
+      );
+    case "apple":
+      return (
+        <>
+          <path
+            d="M70,50 C96,46 114,66 112,94 C110,122 92,146 70,146 C48,146 30,122 28,94 C26,66 44,46 70,50 Z"
+            fill="oklch(58% 0.19 25)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path d="M70,50 C68,38 70,28 76,20" stroke="oklch(48% 0.1 70)" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path
+            d="M76,24 C84,16 94,16 100,24 C92,28 84,30 76,24 Z"
+            fill="oklch(62% 0.14 145)"
+            stroke={STROKE}
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+          />
+          <ellipse cx="52" cy="76" rx="9" ry="6" fill="oklch(70% 0.15 45)" opacity="0.6" />
+        </>
+      );
+    case "chocolate":
+      return (
+        <>
+          <rect x="26" y="40" width="88" height="100" rx="10" fill="oklch(38% 0.08 40)" stroke={STROKE} strokeWidth="4.5" />
+          <path
+            d="M26,73 L114,73 M26,107 L114,107 M59,40 L59,140 M92,40 L92,140"
+            stroke="oklch(30% 0.06 40)"
+            strokeWidth="3"
+            strokeLinecap="round"
           />
         </>
       );
