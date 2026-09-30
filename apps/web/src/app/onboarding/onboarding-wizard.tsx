@@ -312,7 +312,16 @@ export function OnboardingWizard({
           </button>
 
           {isLastStep ? (
+            // key="finish" (vs. key="continue" below) forces React to treat
+            // these as two distinct buttons instead of reusing the same DOM
+            // node when isLastStep flips. Without that, React can leave the
+            // reused node still wired to submit the form (formAction) for a
+            // render or two after it's visually showing "Continue" — which
+            // is exactly what was firing completeOnboarding the moment you
+            // clicked Continue on step 3, before step 4 ever appeared.
             <button
+              key="finish"
+              type="submit"
               formAction={completeOnboarding}
               className="wobble-btn hand-shadow bg-tomato-400 px-5 py-2.5 font-display text-sm font-semibold text-cream transition hover:brightness-105"
             >
@@ -320,6 +329,7 @@ export function OnboardingWizard({
             </button>
           ) : (
             <button
+              key="continue"
               type="button"
               onClick={() => setStepIndex((i) => Math.min(STEPS.length - 1, i + 1))}
               className="wobble-btn hand-shadow bg-tomato-400 px-5 py-2.5 font-display text-sm font-semibold text-cream transition hover:brightness-105"
