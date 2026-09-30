@@ -138,13 +138,13 @@ export default async function ShoppingListPage({
           href={`/shopping-list?week=${prevWeekISO}`}
           className="wobble-btn border-2 border-ink bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
         >
-          &larr; Prev
+          &larr; Prev week
         </Link>
         <Link
           href={`/shopping-list?week=${nextWeekISO}`}
           className="wobble-btn border-2 border-ink bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink transition hover:bg-cream-deep"
         >
-          Next &rarr;
+          Next week &rarr;
         </Link>
       </div>
 
