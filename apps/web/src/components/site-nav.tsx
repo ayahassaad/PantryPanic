@@ -74,6 +74,20 @@ function ProfileIcon({ className }: IconProps) {
   );
 }
 
+function AdminIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 34 34" className={className} fill="none">
+      <path
+        d="M17,4 L29,9 L29,17 C29,25 24,29 17,31 C10,29 5,25 5,17 L5,9 Z"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <path d="M11,17 L15,21 L23,12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS: Array<{ href: string; label: string; Icon: (props: IconProps) => JSX.Element }> = [
   { href: "/dashboard", label: "Home", Icon: HomeIcon },
   { href: "/planner", label: "Planner", Icon: PlannerIcon },
@@ -81,6 +95,11 @@ const NAV_ITEMS: Array<{ href: string; label: string; Icon: (props: IconProps) =
   { href: "/shopping-list", label: "Shopping", Icon: ShoppingIcon },
   { href: "/profile", label: "Profile", Icon: ProfileIcon },
 ];
+
+// Appended only for an admin (see the isAdmin prop below) rather than
+// living in NAV_ITEMS itself, which every visitor's nav bar is built
+// from regardless of who they are.
+const ADMIN_NAV_ITEM = { href: "/admin", label: "Admin", Icon: AdminIcon };
 
 // Pages that run their own full-screen flow — signing in, signing up,
 // the OAuth/email callback route — sit outside the logged-in app
@@ -105,9 +124,10 @@ function isActive(pathname: string, href: string): boolean {
 // separately-triggered ones) keeps the "which pages count as the app"
 // list (NAV_HIDDEN_PREFIXES) and the active-link logic in exactly one
 // place.
-export function SiteNav({ children }: { children: ReactNode }) {
+export function SiteNav({ children, isAdmin = false }: { children: ReactNode; isAdmin?: boolean }) {
   const pathname = usePathname();
   const hideNav = NAV_HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
 
   if (hideNav) {
     return <>{children}</>;
@@ -127,7 +147,7 @@ export function SiteNav({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-4">
             <nav className="flex items-center gap-1">
-              {NAV_ITEMS.map(({ href, label, Icon }) => {
+              {navItems.map(({ href, label, Icon }) => {
                 const active = isActive(pathname, href);
                 return (
                   <Link
@@ -168,7 +188,7 @@ export function SiteNav({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-ink bg-cream-card sm:hidden">
         <div className="mx-auto flex max-w-5xl items-stretch justify-between px-1">
-          {NAV_ITEMS.map(({ href, label, Icon }) => {
+          {navItems.map(({ href, label, Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
