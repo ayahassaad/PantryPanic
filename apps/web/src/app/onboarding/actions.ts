@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,6 +61,13 @@ export async function completeOnboarding(formData: FormData) {
     })
     .eq("id", user.id);
 
+  // Without this, dashboard/page.tsx's onboarding_completed_at gate can
+  // read a cached copy of the profile from before this update — the
+  // redirect below is a soft client-side navigation, and Next.js doesn't
+  // know this profile row changed unless told. That stale read is what
+  // was sending people straight back to /onboarding after clicking
+  // Finish, even though the column really had just been set.
+  revalidatePath("/dashboard");
   redirect("/dashboard");
 }
 
@@ -83,5 +91,8 @@ export async function skipOnboarding() {
       .eq("id", user.id);
   }
 
+  // Same reasoning as completeOnboarding above — skip this and Skip can
+  // bounce right back to /onboarding too.
+  revalidatePath("/dashboard");
   redirect("/dashboard");
 }
