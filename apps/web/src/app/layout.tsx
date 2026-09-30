@@ -3,6 +3,7 @@ import { Patrick_Hand, Nunito } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteNav } from "@/components/site-nav";
+import { VisitTracker } from "@/components/visit-tracker";
 import { createClient } from "@/lib/supabase/server";
 
 // Self-hosted via next/font — no separate request to Google Fonts at
@@ -64,15 +65,20 @@ export default async function RootLayout({
     <html lang="en" className={`${patrickHand.variable} ${nunito.variable}`}>
       <body className="antialiased">
         <SiteNav isAdmin={isAdmin}>{children}</SiteNav>
-        {/* Vercel's visitor-count / location / referrer tracking. It's
-            same-origin (script + beacon both go through /_vercel/insights/*
-            on this app's own domain, proxied by Vercel) and Next.js loads
-            it the same trusted way it loads its own scripts, so it works
-            under middleware.ts's strict CSP without needing any changes
-            there. Data only starts showing up once Web Analytics is turned
-            on for this project in the Vercel dashboard — this component
-            alone doesn't activate it. */}
+        {/* Vercel's own visitor dashboard (vercel.com → project →
+            Analytics tab) — same-origin (script + beacon both go through
+            /_vercel/insights/* on this app's own domain, proxied by
+            Vercel) and Next.js loads it the same trusted way it loads its
+            own scripts, so it works under middleware.ts's strict CSP
+            without needing any changes there. Data only starts showing up
+            once Web Analytics is turned on for this project in the Vercel
+            dashboard — this component alone doesn't activate it. */}
         <Analytics />
+        {/* Our own visit log, feeding the "Site visits" section of
+            /admin — separate from the Vercel Analytics above, since
+            Vercel doesn't offer a way to pull its data back into our own
+            pages on the free plan. */}
+        <VisitTracker />
       </body>
     </html>
   );

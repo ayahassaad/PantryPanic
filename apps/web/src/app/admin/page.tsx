@@ -14,6 +14,12 @@ interface RecipeSourceRow {
   source: "user" | "ai" | "seed";
 }
 
+interface PageVisitRow {
+  referrer: string | null;
+  country: string | null;
+  city: string | null;
+}
+
 // One stat tile — same wobble-a/hand-shadow card language every other
 // page in the app already uses for a standalone block of content, just
 // sized down and centered for a single number instead of a form or list.
@@ -57,23 +63,69 @@ export default async function AdminPage() {
     redirect("/dashboard");
   }
 
-  const [{ count: userCount }, { count: recipeCount }, { data: sourceRows }, { data: profileRows }] =
-    await Promise.all([
-      supabase.from("profiles").select("*", { count: "exact", head: true }),
-      supabase.from("recipes").select("*", { count: "exact", head: true }),
-      supabase.from("recipes").select("source").returns<RecipeSourceRow[]>(),
-      supabase
-        .from("profiles")
-        .select("id, full_name, household_size, is_admin, created_at")
-        .order("created_at", { ascending: false })
-        .limit(200)
-        .returns<AdminProfileRow[]>(),
-    ]);
+  const [
+    { count: userCount },
+    { count: recipeCount },
+    { data: sourceRows },
+    { data: profileRows },
+    { count: visitCount },
+    { data: visitRows },
+  ] = await Promise.all([
+    supabase.from("profiles").select("*", { count: "exact", head: true }),
+    supabase.from("recipes").select("*", { count: "exact", head: true }),
+    supabase.from("recipes").select("source").returns<RecipeSourceRow[]>(),
+    supabase
+      .from("profiles")
+      .select("id, full_name, household_size, is_admin, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .returns<AdminProfileRow[]>(),
+    supabase.from("page_visits").select("*", { count: "exact", head: true }),
+    // Top locations/referrers are computed below from a recent sample
+    // rather than every row ever logged — accurate enough for "where are
+    // people coming from lately" without a separate SQL aggregate query.
+    supabase
+      .from("page_visits")
+      .select("referrer, country, city")
+      .order("visited_at", { ascending: false })
+      .limit(1000)
+      .returns<PageVisitRow[]>(),
+  ]);
 
   const recipesBySource = { user: 0, ai: 0, seed: 0 };
   for (const row of sourceRows ?? []) {
     recipesBySource[row.source] = (recipesBySource[row.source] ?? 0) + 1;
   }
+
+  const locationCounts = new Map<string, number>();
+  const referrerCounts = new Map<string, number>();
+  for (const visit of visitRows ?? []) {
+    const location =
+      visit.city && visit.country
+        ? `${visit.city}, ${visit.country}`
+        : (visit.country ?? "Unknown");
+    locationCounts.set(location, (locationCounts.get(location) ?? 0) + 1);
+
+    // Group by hostname rather than the full URL, so
+    // "google.com/search?q=..." and "google.com/search?q=other" count as
+    // one "google.com" source instead of two separate referrers. A
+    // referrer isn't always a valid absolute URL (some browsers send a
+    // bare origin, some send nothing at all), so this falls back to the
+    // raw string, or "Direct / none" when there's nothing to show at all
+    // — someone typed the URL, used a bookmark, or their browser strips
+    // the referrer for privacy.
+    let referrerLabel = "Direct / none";
+    if (visit.referrer) {
+      try {
+        referrerLabel = new URL(visit.referrer).hostname.replace(/^www\./, "");
+      } catch {
+        referrerLabel = visit.referrer;
+      }
+    }
+    referrerCounts.set(referrerLabel, (referrerCounts.get(referrerLabel) ?? 0) + 1);
+  }
+  const topLocations = [...locationCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const topReferrers = [...referrerCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-6 py-8 sm:px-10">
@@ -144,6 +196,61 @@ export default async function AdminPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Our own visit log (see components/visit-tracker.tsx), separate
+          from Vercel's own Analytics tab on vercel.com — this is what
+          lets the numbers live here instead of only on Vercel's site.
+          Countries/cities only fill in for visits on the live deployment
+          (Vercel adds those headers; local dev never has them), and
+          "you" testing the site counts as a visit too, so treat these as
+          a rough picture rather than an exact audience count. */}
+      <h2 className="mb-3 mt-10 font-display text-lg font-bold text-ink">Site visits</h2>
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Total visits" value={visitCount ?? 0} accent="bg-carrot-50" />
+      </div>
+
+      <div className="grid gap-8 sm:grid-cols-2">
+        <div>
+          <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
+            Top locations
+          </h3>
+          <ul className="wobble-a hand-shadow flex flex-col border-2 border-ink bg-cream-card px-4">
+            {topLocations.map(([location, count]) => (
+              <li
+                key={location}
+                className="flex items-center justify-between border-b border-ink-faint/20 py-2 text-sm last:border-b-0"
+              >
+                <span className="text-ink">{location}</span>
+                <span className="font-bold text-ink-soft">{count}</span>
+              </li>
+            ))}
+            {topLocations.length === 0 && (
+              <li className="py-4 text-center text-sm text-ink-faint">No visits recorded yet.</li>
+            )}
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
+            Top referrers
+          </h3>
+          <ul className="wobble-a hand-shadow flex flex-col border-2 border-ink bg-cream-card px-4">
+            {topReferrers.map(([referrer, count]) => (
+              <li
+                key={referrer}
+                className="flex items-center justify-between border-b border-ink-faint/20 py-2 text-sm last:border-b-0"
+              >
+                <span className="text-ink">{referrer}</span>
+                <span className="font-bold text-ink-soft">{count}</span>
+              </li>
+            ))}
+            {topReferrers.length === 0 && (
+              <li className="py-4 text-center text-sm text-ink-faint">No visits recorded yet.</li>
+            )}
+          </ul>
+        </div>
       </div>
     </main>
   );
