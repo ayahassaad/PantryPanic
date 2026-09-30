@@ -50,7 +50,6 @@ interface Step {
   key: "cuisine" | "dietary" | "allergies" | "household";
   eyebrow: string;
   title: string;
-  subtitle: string;
 }
 
 const STEPS: Step[] = [
@@ -58,25 +57,21 @@ const STEPS: Step[] = [
     key: "cuisine",
     eyebrow: "1 of 4",
     title: "What flavors are you into?",
-    subtitle: "Pick as many as you like — this steers the AI's recipe ideas.",
   },
   {
     key: "dietary",
     eyebrow: "2 of 4",
     title: "Any dietary preferences?",
-    subtitle: "We'll keep suggestions in line with how you like to eat.",
   },
   {
     key: "allergies",
     eyebrow: "3 of 4",
     title: "Any allergies we should know about?",
-    subtitle: "AI suggestions will avoid these entirely.",
   },
   {
     key: "household",
     eyebrow: "4 of 4",
     title: "Last thing — set up your kitchen",
-    subtitle: "Used for default servings and shopping list units.",
   },
 ];
 
@@ -190,8 +185,7 @@ export function OnboardingWizard({
       <p className="mb-1 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
         {step.eyebrow}
       </p>
-      <h1 className="mb-2 font-display text-2xl font-bold text-ink sm:text-3xl">{step.title}</h1>
-      <p className="mb-6 text-sm text-ink-soft">{step.subtitle}</p>
+      <h1 className="mb-6 font-display text-2xl font-bold text-ink sm:text-3xl">{step.title}</h1>
 
       <form className="flex flex-col gap-6">
         {/* All four steps' state lives in this one form the whole time —
