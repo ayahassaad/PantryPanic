@@ -15,9 +15,22 @@ interface RecipeSourceRow {
 }
 
 interface PageVisitRow {
+  visited_at: string;
+  path: string;
   referrer: string | null;
   country: string | null;
   city: string | null;
+}
+
+// Shared by both the "Top referrers" list and the per-visit table below
+// it, so a given referrer reads the same way in both places.
+function formatReferrer(referrer: string | null): string {
+  if (!referrer) return "Direct / none";
+  try {
+    return new URL(referrer).hostname.replace(/^www\./, "");
+  } catch {
+    return referrer;
+  }
 }
 
 // One stat tile — same wobble-a/hand-shadow card language every other
@@ -86,7 +99,7 @@ export default async function AdminPage() {
     // people coming from lately" without a separate SQL aggregate query.
     supabase
       .from("page_visits")
-      .select("referrer, country, city")
+      .select("visited_at, path, referrer, country, city")
       .order("visited_at", { ascending: false })
       .limit(1000)
       .returns<PageVisitRow[]>(),
@@ -106,22 +119,10 @@ export default async function AdminPage() {
         : (visit.country ?? "Unknown");
     locationCounts.set(location, (locationCounts.get(location) ?? 0) + 1);
 
-    // Group by hostname rather than the full URL, so
+    // Grouped by hostname rather than the full URL, so
     // "google.com/search?q=..." and "google.com/search?q=other" count as
-    // one "google.com" source instead of two separate referrers. A
-    // referrer isn't always a valid absolute URL (some browsers send a
-    // bare origin, some send nothing at all), so this falls back to the
-    // raw string, or "Direct / none" when there's nothing to show at all
-    // — someone typed the URL, used a bookmark, or their browser strips
-    // the referrer for privacy.
-    let referrerLabel = "Direct / none";
-    if (visit.referrer) {
-      try {
-        referrerLabel = new URL(visit.referrer).hostname.replace(/^www\./, "");
-      } catch {
-        referrerLabel = visit.referrer;
-      }
-    }
+    // one "google.com" source instead of two separate referrers.
+    const referrerLabel = formatReferrer(visit.referrer);
     referrerCounts.set(referrerLabel, (referrerCounts.get(referrerLabel) ?? 0) + 1);
   }
   const topLocations = [...locationCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -251,6 +252,61 @@ export default async function AdminPage() {
             )}
           </ul>
         </div>
+      </div>
+
+      {/* The individual log behind the summaries above — newest first.
+          Capped at 150 rows on the page itself (the queries above already
+          pull up to 1,000 for the totals/top-lists, this just doesn't
+          render all of them at once) so the table stays scannable instead
+          of turning into an endless scroll. */}
+      <h3 className="mb-2 mt-8 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
+        Recent visits
+      </h3>
+      <div className="wobble-a hand-shadow overflow-hidden border-2 border-ink bg-cream-card">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b-2 border-ink bg-cream-deep text-xs font-bold uppercase tracking-wide text-ink-soft">
+              <th className="px-4 py-2.5">Time</th>
+              <th className="px-4 py-2.5">Page</th>
+              <th className="px-4 py-2.5">Location</th>
+              <th className="px-4 py-2.5">Referrer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(visitRows ?? []).slice(0, 150).map((visit, index) => (
+              <tr
+                // No stable id was selected from page_visits, and a visit
+                // row is never edited or reordered client-side, so the
+                // array's own index is a safe key here.
+                key={index}
+                className="border-b border-ink-faint/30 last:border-b-0"
+              >
+                <td className="px-4 py-2.5 text-ink-soft">
+                  {new Date(visit.visited_at).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </td>
+                <td className="px-4 py-2.5 font-semibold text-ink">{visit.path}</td>
+                <td className="px-4 py-2.5 text-ink-soft">
+                  {visit.city && visit.country
+                    ? `${visit.city}, ${visit.country}`
+                    : (visit.country ?? "Unknown")}
+                </td>
+                <td className="px-4 py-2.5 text-ink-soft">{formatReferrer(visit.referrer)}</td>
+              </tr>
+            ))}
+            {(visitRows?.length ?? 0) === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-ink-faint">
+                  No visits recorded yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </main>
   );
