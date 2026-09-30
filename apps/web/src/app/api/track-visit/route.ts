@@ -32,7 +32,19 @@ export async function POST(request: NextRequest) {
   const city = rawCity ? decodeURIComponent(rawCity) : null;
 
   const supabase = await createClient();
-  await supabase.from("page_visits").insert({ path, referrer, country, city });
+  const { error } = await supabase
+    .from("page_visits")
+    .insert({ path, referrer, country, city });
 
-  return NextResponse.json({ ok: true });
+  if (error) {
+    console.error("track-visit insert failed:", error);
+  }
+
+  // TEMPORARY: surfacing the raw error in the response so it can be
+  // diagnosed from the browser's network tab (visits weren't showing up
+  // in the admin page's totals, and this route was silently swallowing
+  // the reason why). Safe to leave logging via console.error long-term,
+  // but this response body should go back to just {ok:true} once the
+  // real cause is found and fixed.
+  return NextResponse.json({ ok: !error, error: error?.message ?? null });
 }
