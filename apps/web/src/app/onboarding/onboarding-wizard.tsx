@@ -172,12 +172,18 @@ export function OnboardingWizard({
         </form>
       </div>
 
-      {/* Progress dots — one per step, filled up through the current one. */}
+      {/* Progress dots — one per step, filled up through the current one,
+          and clickable so you can jump straight to any step. */}
       <div className="mb-6 flex gap-1.5">
         {STEPS.map((s, index) => (
-          <span
+          <button
             key={s.key}
-            className={`h-2 flex-1 rounded-full ${index <= stepIndex ? "bg-tomato-400" : "bg-cream-deep"}`}
+            type="button"
+            onClick={() => setStepIndex(index)}
+            aria-label={`Go to step ${index + 1}: ${s.title}`}
+            className={`h-2 flex-1 rounded-full transition hover:brightness-90 ${
+              index <= stepIndex ? "bg-tomato-400" : "bg-cream-deep"
+            }`}
           />
         ))}
       </div>
