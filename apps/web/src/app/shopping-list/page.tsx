@@ -148,12 +148,6 @@ export default async function ShoppingListPage({
         </Link>
       </div>
 
-      <p className="mb-6 text-xs font-bold text-ink-soft">
-        &#10003; Always in sync with your planner — plan or unplan a meal
-        and this list updates automatically. Already-checked items stay
-        checked.
-      </p>
-
       {list && (
         <form action={addManualItem} className="mb-8 flex gap-2">
           <input type="hidden" name="shoppingListId" value={list.id} />
