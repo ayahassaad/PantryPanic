@@ -208,61 +208,15 @@ export default async function AdminPage() {
           a rough picture rather than an exact audience count. */}
       <h2 className="mb-3 mt-10 font-display text-lg font-bold text-ink">Site visits</h2>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total visits" value={visitCount ?? 0} accent="bg-carrot-50" />
-      </div>
-
-      <div className="grid gap-8 sm:grid-cols-2">
-        <div>
-          <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
-            Top locations
-          </h3>
-          <ul className="wobble-a hand-shadow flex flex-col border-2 border-ink bg-cream-card px-4">
-            {topLocations.map(([location, count]) => (
-              <li
-                key={location}
-                className="flex items-center justify-between border-b border-ink-faint/20 py-2 text-sm last:border-b-0"
-              >
-                <span className="text-ink">{location}</span>
-                <span className="font-bold text-ink-soft">{count}</span>
-              </li>
-            ))}
-            {topLocations.length === 0 && (
-              <li className="py-4 text-center text-sm text-ink-faint">No visits recorded yet.</li>
-            )}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
-            Top referrers
-          </h3>
-          <ul className="wobble-a hand-shadow flex flex-col border-2 border-ink bg-cream-card px-4">
-            {topReferrers.map(([referrer, count]) => (
-              <li
-                key={referrer}
-                className="flex items-center justify-between border-b border-ink-faint/20 py-2 text-sm last:border-b-0"
-              >
-                <span className="text-ink">{referrer}</span>
-                <span className="font-bold text-ink-soft">{count}</span>
-              </li>
-            ))}
-            {topReferrers.length === 0 && (
-              <li className="py-4 text-center text-sm text-ink-faint">No visits recorded yet.</li>
-            )}
-          </ul>
-        </div>
-      </div>
-
-      {/* The individual log behind the summaries above — newest first.
-          Capped at 150 rows on the page itself (the queries above already
-          pull up to 1,000 for the totals/top-lists, this just doesn't
-          render all of them at once) so the table stays scannable instead
-          of turning into an endless scroll. */}
-      <h3 className="mb-2 mt-8 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
+      {/* The individual log — newest first. Capped at 150 rows on the
+          page itself (the queries above already pull up to 1,000 for the
+          totals/top-lists, this just doesn't render all of them at once)
+          so the table stays scannable instead of turning into an endless
+          scroll. */}
+      <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
         Recent visits
       </h3>
-      <div className="wobble-a hand-shadow overflow-hidden border-2 border-ink bg-cream-card">
+      <div className="mb-6 wobble-a hand-shadow overflow-hidden border-2 border-ink bg-cream-card">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b-2 border-ink bg-cream-deep text-xs font-bold uppercase tracking-wide text-ink-soft">
@@ -307,6 +261,52 @@ export default async function AdminPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Total visits" value={visitCount ?? 0} accent="bg-carrot-50" />
+      </div>
+
+      <div className="grid gap-8 sm:grid-cols-2">
+        <div>
+          <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
+            Top locations
+          </h3>
+          <ul className="wobble-a hand-shadow flex flex-col border-2 border-ink bg-cream-card px-4">
+            {topLocations.map(([location, count]) => (
+              <li
+                key={location}
+                className="flex items-center justify-between border-b border-ink-faint/20 py-2 text-sm last:border-b-0"
+              >
+                <span className="text-ink">{location}</span>
+                <span className="font-bold text-ink-soft">{count}</span>
+              </li>
+            ))}
+            {topLocations.length === 0 && (
+              <li className="py-4 text-center text-sm text-ink-faint">No visits recorded yet.</li>
+            )}
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-ink-soft">
+            Top referrers
+          </h3>
+          <ul className="wobble-a hand-shadow flex flex-col border-2 border-ink bg-cream-card px-4">
+            {topReferrers.map(([referrer, count]) => (
+              <li
+                key={referrer}
+                className="flex items-center justify-between border-b border-ink-faint/20 py-2 text-sm last:border-b-0"
+              >
+                <span className="text-ink">{referrer}</span>
+                <span className="font-bold text-ink-soft">{count}</span>
+              </li>
+            ))}
+            {topReferrers.length === 0 && (
+              <li className="py-4 text-center text-sm text-ink-faint">No visits recorded yet.</li>
+            )}
+          </ul>
+        </div>
       </div>
     </main>
   );
