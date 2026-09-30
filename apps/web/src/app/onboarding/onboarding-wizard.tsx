@@ -193,7 +193,23 @@ export function OnboardingWizard({
       </p>
       <h1 className="mb-6 font-display text-2xl font-bold text-ink sm:text-3xl">{step.title}</h1>
 
-      <form className="flex flex-col gap-6">
+      <form
+        className="flex flex-col gap-6"
+        onKeyDown={(event) => {
+          // Steps only ever advance via the Back/Continue/Finish buttons —
+          // nothing else in here should submit anything. Without this,
+          // pressing Enter after typing a household size (very natural)
+          // triggers the browser's *implicit* form submission, which fires
+          // the first submit-type control in the DOM. On this last step
+          // that's the Finish button, so it silently ran completeOnboarding
+          // before the user ever clicked it. Only suppressing this for
+          // non-button targets keeps Enter/Space still working to activate
+          // a focused button via the keyboard.
+          if (event.key === "Enter" && (event.target as HTMLElement).tagName !== "BUTTON") {
+            event.preventDefault();
+          }
+        }}
+      >
         {/* All four steps' state lives in this one form the whole time —
             only the CURRENT step's controls are visible, but every
             step's hidden inputs stay mounted so nothing is lost moving
