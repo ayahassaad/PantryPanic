@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Patrick_Hand, Nunito } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteNav } from "@/components/site-nav";
 import { createClient } from "@/lib/supabase/server";
@@ -63,6 +64,15 @@ export default async function RootLayout({
     <html lang="en" className={`${patrickHand.variable} ${nunito.variable}`}>
       <body className="antialiased">
         <SiteNav isAdmin={isAdmin}>{children}</SiteNav>
+        {/* Vercel's visitor-count / location / referrer tracking. It's
+            same-origin (script + beacon both go through /_vercel/insights/*
+            on this app's own domain, proxied by Vercel) and Next.js loads
+            it the same trusted way it loads its own scripts, so it works
+            under middleware.ts's strict CSP without needing any changes
+            there. Data only starts showing up once Web Analytics is turned
+            on for this project in the Vercel dashboard — this component
+            alone doesn't activate it. */}
+        <Analytics />
       </body>
     </html>
   );
