@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
+import { syncShoppingListFromPlanner } from "@/app/shopping-list/actions";
 
 // Same accent per meal slot as the planner grid (breakfast = citrus,
 // lunch = leaf, dinner = tomato), so a meal looks the same here as it
@@ -74,13 +75,59 @@ export default async function DashboardPage() {
   const weekStart = resolveWeekStart(undefined);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const { data: weekEntries } = await supabase
-    .from("meal_plan_entries")
-    .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
-    .eq("user_id", user.id)
-    .gte("plan_date", toISODate(weekStart))
-    .lte("plan_date", toISODate(addDays(weekStart, 6)))
-    .returns<PlanEntry[]>();
+  const weekStartISO = toISODate(weekStart);
+
+  // How many items are on this week's shopping list, and how many are
+  // still unticked. The list is only ever rebuilt from the planner when
+  // something asks it to (see syncShoppingListFromPlanner), so it's
+  // synced here first, exactly as the shopping list page does on every
+  // visit — otherwise a meal added since that page was last opened
+  // wouldn't be counted, and this card would show a number the list
+  // itself then contradicts.
+  async function countShoppingItems(userId: string): Promise<{ total: number; left: number }> {
+    await syncShoppingListFromPlanner(supabase, userId, weekStartISO);
+
+    const { data: list } = await supabase
+      .from("shopping_lists")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("week_start_date", weekStartISO)
+      .maybeSingle<{ id: string }>();
+    if (!list) {
+      return { total: 0, left: 0 };
+    }
+
+    const { data: items } = await supabase
+      .from("shopping_list_items")
+      .select("is_checked")
+      .eq("shopping_list_id", list.id)
+      .returns<Array<{ is_checked: boolean }>>();
+
+    return {
+      total: items?.length ?? 0,
+      left: (items ?? []).filter((item) => !item.is_checked).length,
+    };
+  }
+
+  // Side by side rather than one after the other — neither needs the
+  // other's result.
+  const [{ data: weekEntries }, shopping] = await Promise.all([
+    supabase
+      .from("meal_plan_entries")
+      .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
+      .eq("user_id", user.id)
+      .gte("plan_date", weekStartISO)
+      .lte("plan_date", toISODate(addDays(weekStart, 6)))
+      .returns<PlanEntry[]>(),
+    countShoppingItems(user.id),
+  ]);
+
+  const shoppingSummary =
+    shopping.total === 0
+      ? "Fills itself from your meal plan"
+      : shopping.left === 0
+        ? `All ${shopping.total} items ticked off this week`
+        : `${shopping.left} ${shopping.left === 1 ? "item" : "items"} left to buy this week`;
 
   const todayBySlot = new Map<MealSlot, PlanEntry>();
   const plannedCells = new Set<string>();
@@ -280,22 +327,32 @@ export default async function DashboardPage() {
           </p>
         </Link>
 
+        {/* Used to be an "Edit profile" card — the profile is one tap
+            away in the nav bar on every page, while the shopping list is
+            the third thing this app actually does and had no card here
+            at all. Same bag icon as its nav tab (see site-nav.tsx). */}
         <Link
-          href="/profile"
+          href="/shopping-list"
           className="wobble-a hand-shadow relative -rotate-[0.6deg] bg-citrus-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
-            <circle cx="17" cy="11" r="6" fill="none" stroke="oklch(24% 0.03 150)" strokeWidth="2.5" />
             <path
-              d="M5,30 C5,21 10,17 17,17 C24,17 29,21 29,30"
+              d="M8,11 L26,11 L24,29 L10,29 Z"
+              fill="none"
+              stroke="oklch(24% 0.03 150)"
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M12,11 C12,6 14,4 17,4 C20,4 22,6 22,11"
               fill="none"
               stroke="oklch(24% 0.03 150)"
               strokeWidth="2.5"
               strokeLinecap="round"
             />
           </svg>
-          <p className="font-display text-xl font-semibold text-ink">Edit profile</p>
-          <p className="mt-1 text-sm text-ink-soft">Allergies &amp; what you won&apos;t eat</p>
+          <p className="font-display text-xl font-semibold text-ink">Shopping list</p>
+          <p className="mt-1 text-sm text-ink-soft">{shoppingSummary}</p>
         </Link>
       </div>
     </main>
