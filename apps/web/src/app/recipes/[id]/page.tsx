@@ -6,6 +6,7 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { toggleFavorite, deleteRecipe } from "../actions";
 import { DeleteRecipeButton } from "./delete-recipe-button";
 import { AddToPlannerButton } from "../add-to-planner-button";
+import { IngredientList } from "./ingredient-list";
 
 interface RecipeDetail {
   id: string;
@@ -156,37 +157,7 @@ export default async function RecipeDetailPage({
 
       {ingredients && ingredients.length > 0 && (
         <section className="mb-8">
-          <p className="mb-3 font-display text-xs font-semibold uppercase tracking-widest text-leaf-600">
-            Ingredients
-          </p>
-          {/* Each ingredient (and each step below) can be ticked off
-              while cooking. A real checkbox per line, visually hidden,
-              with the visible dot and text styled off its :checked state
-              (Tailwind's peer-checked) — so it needs no JavaScript or
-              client component, works with the keyboard, and is
-              deliberately not saved anywhere: it's a "where was I?" aid
-              for one cooking session, and starts fresh on the next
-              visit. */}
-          <ul className="flex flex-col gap-2">
-            {ingredients.map((ingredient) => (
-              <li key={ingredient.id}>
-                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-bold text-ink">
-                  <input type="checkbox" className="peer sr-only" />
-                  <span
-                    aria-hidden
-                    className="flex h-4 w-4 flex-none items-center justify-center rounded-full border-2 border-ink bg-cream-card text-[9px] leading-none text-transparent transition peer-checked:bg-leaf-400 peer-checked:text-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-1"
-                  >
-                    &#10003;
-                  </span>
-                  <span className="transition peer-checked:text-ink-faint peer-checked:line-through">
-                    {[ingredient.quantity, ingredient.unit, ingredient.name]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          <IngredientList ingredients={ingredients} />
         </section>
       )}
 
@@ -194,6 +165,14 @@ export default async function RecipeDetailPage({
         <p className="mb-3 font-display text-xs font-semibold uppercase tracking-widest text-tomato-400">
           Steps
         </p>
+        {/* Each step can be ticked off while cooking (as can each
+            ingredient above — see ingredient-list.tsx). A real checkbox
+            per line, visually hidden, with the number badge and text
+            styled off its :checked state (Tailwind's peer-checked) — so
+            it needs no JavaScript, works with the keyboard, and is
+            deliberately not saved anywhere: it's a "where was I?" aid
+            for one cooking session, and starts fresh on the next
+            visit. */}
         <ol className="flex flex-col gap-3.5">
           {recipe.steps.map((step, index) => (
             <li key={index}>
