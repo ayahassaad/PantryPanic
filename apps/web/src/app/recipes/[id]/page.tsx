@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { FoodMascot, inferFoodKind } from "@/components/food-mascot";
 import { FavoriteButton } from "@/components/favorite-button";
 import { toggleFavorite, deleteRecipe } from "../actions";
 import { DeleteRecipeButton } from "./delete-recipe-button";
 import { AddToPlannerButton } from "../add-to-planner-button";
 import { IngredientList } from "./ingredient-list";
+import { RecipeFoodMascot } from "./recipe-food-mascot";
 
 interface RecipeDetail {
   id: string;
@@ -92,14 +92,14 @@ export default async function RecipeDetailPage({
       ) : (
         <div className="wobble-a hand-shadow mb-6 flex h-40 items-center justify-center border-2 border-ink bg-tomato-400">
           {/* The same food character this recipe's card shows on the
-              recipes page (guessed from its ingredients, then its
-              title/description — see inferFoodKind), rather than the
-              plain tomato every photo-less recipe used to get here. */}
-          <FoodMascot
-            kind={inferFoodKind(
-              `${recipe.title} ${recipe.description ?? ""}`,
-              (ingredients ?? []).map((ingredient) => ingredient.name),
-            )}
+              recipes page, rather than the plain tomato every
+              photo-less recipe used to get here — see
+              recipe-food-mascot.tsx for why it's a component of its
+              own. */}
+          <RecipeFoodMascot
+            title={recipe.title}
+            description={recipe.description}
+            ingredientNames={(ingredients ?? []).map((ingredient) => ingredient.name)}
             className="h-20 w-[70px]"
           />
         </div>
