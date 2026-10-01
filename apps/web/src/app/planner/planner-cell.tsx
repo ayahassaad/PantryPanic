@@ -288,47 +288,53 @@ export function PlannerCell({
   if (entry) {
     return (
       <div
-        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass} ${pastClass}`}
+        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass} ${pastClass}`}
       >
         {entry.recipeId ? (
           <Link
             href={`/recipes/${entry.recipeId}`}
-            className={`flex flex-1 flex-col pr-5 transition hover:brightness-110 ${textClass}`}
+            className={`flex flex-1 flex-col pr-6 transition hover:brightness-110 ${textClass}`}
           >
             <span className="line-clamp-3 font-display text-sm font-semibold leading-snug">
               {entry.recipeTitle}
             </span>
           </Link>
         ) : (
-          <div className={`flex-1 pr-5 ${textClass}`}>
+          <div className={`flex-1 pr-6 ${textClass}`}>
             <span className="text-xs" style={{ opacity: 0.75 }}>
               Recipe removed
             </span>
           </div>
         )}
 
-        {/* Small pill: numeral only (the "serving(s)" word is dropped
-            from the visible label — the box is still narrow even though
-            it's now taller — but kept for screen readers via the
-            sr-only span and the buttons' aria-labels). Border, buttons
-            and numeral are all plain text-ink/border-ink (not the
-            per-slot textClass) so the stepper reads the same solid
-            black on every meal slot's color, matching the card's own
-            black outline. mt-auto pins it to the bottom of the taller
-            card instead of sitting right under the title. */}
-        <div className="mt-auto flex w-fit items-center gap-1 rounded-full border border-ink px-1.5 py-0.5 text-ink">
+        {/* Servings pill. The − / + buttons are 24×28px (they used to
+            be bare 11px glyphs, a very small thing to hit with a thumb)
+            — as big as fits: at its narrowest (the grid's 780px
+            minimum) a cell has only ~70px of room inside, and the whole
+            pill has to stay within that. The "serving(s)" word is
+            visible wherever the cell is wide enough for it: on the
+            phone layout (one full-width cell per meal) and on very wide
+            screens. In between, the desktop grid's cells are too
+            narrow, so it falls back to numeral-only with the word kept
+            for screen readers. Border, buttons and numeral are all plain
+            text-ink/border-ink (not the per-slot textClass) so the
+            stepper reads the same solid black on every meal slot's
+            color, matching the card's own black outline. mt-auto pins
+            it to the bottom of the card instead of sitting right under
+            the title. */}
+        <div className="mt-auto flex w-fit items-center rounded-full border border-ink text-ink">
           <button
             type="button"
             onClick={() => adjustServings(-1)}
             disabled={entry.servings <= MIN_SERVINGS}
             aria-label="Fewer servings"
-            className="flex-none text-[11px] font-bold leading-none transition hover:opacity-60 disabled:opacity-40"
+            className="flex h-7 w-6 flex-none items-center justify-center rounded-full text-base font-bold leading-none transition hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent"
           >
             &minus;
           </button>
-          <span className="text-[10px] font-semibold tabular-nums">
+          <span className="min-w-4 px-0.5 text-center text-xs font-bold tabular-nums">
             {entry.servings}
-            <span className="sr-only">
+            <span className="md:sr-only 2xl:not-sr-only">
               {" "}
               {entry.servings === 1 ? "serving" : "servings"}
             </span>
@@ -338,7 +344,7 @@ export function PlannerCell({
             onClick={() => adjustServings(1)}
             disabled={entry.servings >= MAX_SERVINGS}
             aria-label="More servings"
-            className="flex-none text-[11px] font-bold leading-none transition hover:opacity-60 disabled:opacity-40"
+            className="flex h-7 w-6 flex-none items-center justify-center rounded-full text-base font-bold leading-none transition hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent"
           >
             +
           </button>
@@ -348,7 +354,7 @@ export function PlannerCell({
           type="button"
           onClick={handleRemove}
           aria-label="Remove this meal"
-          className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-sm font-bold leading-none transition hover:bg-black/10 ${textClass}`}
+          className={`absolute right-0.5 top-0.5 flex h-7 w-7 items-center justify-center rounded-full text-lg font-bold leading-none transition hover:bg-black/10 ${textClass}`}
           style={{ opacity: 0.75 }}
         >
           &times;
