@@ -291,7 +291,7 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
             >
               {/* Decorative doodles that rain down the card on hover, all
                   the way to the bottom — z-20 puts them above the text
-                  block below (z-10) instead of behind it, so they stay
+                  block below instead of behind it, so they stay
                   visible (semi-transparent) over the title/description
                   rather than disappearing the moment they'd reach any
                   text. pointer-events-none keeps them purely visual: the
@@ -346,23 +346,39 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
                 )}
               </div>
 
-              <div className="relative z-10 bg-cream-card">
+              {/* The whole card opens the recipe, not just the words of
+                  its title: the title link's ::after is stretched over
+                  the entire card (it's positioned against the <li>,
+                  the nearest `relative` ancestor — which is why this
+                  text block itself isn't `relative` any more). The
+                  card's other controls — the star, Edit, Delete — are
+                  each `relative z-10` so they sit above that stretched
+                  link and still get their own clicks. Still one real
+                  link per card for keyboard and screen-reader users,
+                  rather than a second, duplicate one wrapped around the
+                  picture. */}
+              <div className="bg-cream-card">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
-                    <Link href={`/recipes/${recipe.id}`} className="hover:underline">
+                    <Link
+                      href={`/recipes/${recipe.id}`}
+                      className="after:absolute after:inset-0 after:content-[''] group-hover:underline"
+                    >
                       {recipe.title}
                     </Link>
                   </h2>
-                  <FavoriteButton
-                    recipeId={recipe.id}
-                    initialFavorited={isFavorited}
-                    toggleFavorite={toggleFavorite}
-                    onToggle={handleToggle}
-                    size="sm"
-                  />
+                  <div className="relative z-10 flex-none">
+                    <FavoriteButton
+                      recipeId={recipe.id}
+                      initialFavorited={isFavorited}
+                      toggleFavorite={toggleFavorite}
+                      onToggle={handleToggle}
+                      size="sm"
+                    />
+                  </div>
                 </div>
                 {recipe.isOwner && (
-                  <div className="mt-1 flex items-center gap-3">
+                  <div className="relative z-10 mt-1 flex w-fit items-center gap-3">
                     <Link
                       href={`/recipes/${recipe.id}/edit`}
                       className="text-xs font-bold text-ink-soft underline underline-offset-2 transition hover:text-ink"
