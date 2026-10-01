@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
-import { toISODate } from "@/lib/week";
+import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
 
 // Same accent per meal slot as the planner grid (breakfast = citrus,
@@ -13,6 +13,8 @@ const SLOT_STYLES: Record<MealSlot, { label: string; cell: string }> = {
   lunch: { label: "text-leaf-600", cell: "bg-leaf-400" },
   dinner: { label: "text-tomato-600", cell: "bg-tomato-400" },
 };
+
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 interface PlanEntry {
   id: string;
@@ -66,17 +68,31 @@ export default async function DashboardPage() {
     timeZone: "UTC",
   });
 
-  const { data: todayEntries } = await supabase
+  // The whole current week (Monday-anchored, same boundaries as the
+  // planner), not just today — today's strip and the week summary below
+  // are both read out of this one query.
+  const weekStart = resolveWeekStart(undefined);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const { data: weekEntries } = await supabase
     .from("meal_plan_entries")
     .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
     .eq("user_id", user.id)
-    .eq("plan_date", todayISO)
+    .gte("plan_date", toISODate(weekStart))
+    .lte("plan_date", toISODate(addDays(weekStart, 6)))
     .returns<PlanEntry[]>();
 
   const todayBySlot = new Map<MealSlot, PlanEntry>();
-  for (const entry of todayEntries ?? []) {
-    todayBySlot.set(entry.meal_slot, entry);
+  const plannedCells = new Set<string>();
+  for (const entry of weekEntries ?? []) {
+    plannedCells.add(`${entry.plan_date}_${entry.meal_slot}`);
+    if (entry.plan_date === todayISO) {
+      todayBySlot.set(entry.meal_slot, entry);
+    }
   }
+
+  const totalSlots = weekDays.length * MEAL_SLOTS.length;
+  const filledSlots = weekEntries?.length ?? 0;
 
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] max-w-5xl flex-col justify-center px-6 py-8 sm:px-10">
@@ -150,6 +166,71 @@ export default async function DashboardPage() {
           })}
         </div>
       </section>
+
+      {/* The planner's own "X of Y meals planned" count and progress
+          bar, plus one column per day with a dot per meal slot (filled
+          in that slot's color once something's planned) — the whole
+          week's state at a glance, and one click from the planner. */}
+      <Link
+        href="/planner"
+        className="wobble-b mb-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-2 border-ink bg-cream-card p-5 transition hover:bg-cream-deep"
+      >
+        <div>
+          <p className="font-display text-xs font-semibold uppercase tracking-widest text-leaf-600">
+            This week
+          </p>
+          <p className="mt-1 font-display text-2xl font-bold text-ink">
+            {filledSlots} of {totalSlots} meals planned
+          </p>
+          <div
+            aria-hidden
+            className="mt-2 h-2.5 w-52 overflow-hidden rounded-full border-2 border-ink bg-cream-card"
+          >
+            <div
+              className="h-full rounded-full bg-leaf-400"
+              style={{ width: `${Math.round((filledSlots / totalSlots) * 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* aria-hidden: the dots only repeat, per day, what the sentence
+            above already says in total. */}
+        <div aria-hidden className="flex gap-2 sm:gap-3">
+          {weekDays.map((day, i) => {
+            const dateISO = toISODate(day);
+            const isToday = dateISO === todayISO;
+            return (
+              <div
+                key={dateISO}
+                className={`flex flex-col items-center gap-1 ${dateISO < todayISO ? "opacity-50" : ""}`}
+              >
+                <span className="text-[10px] font-extrabold uppercase tracking-wide text-ink-soft">
+                  {DAY_LABELS[i]}
+                </span>
+                <span
+                  className={`inline-flex h-6 w-6 items-center justify-center font-display text-sm font-bold text-ink ${
+                    isToday ? "rounded-full bg-citrus-400" : ""
+                  }`}
+                >
+                  {day.getUTCDate()}
+                </span>
+                <span className="flex gap-0.5">
+                  {MEAL_SLOTS.map((slot) => (
+                    <span
+                      key={slot}
+                      className={`h-2 w-2 rounded-full border ${
+                        plannedCells.has(`${dateISO}_${slot}`)
+                          ? `border-ink ${SLOT_STYLES[slot].cell}`
+                          : "border-ink-faint"
+                      }`}
+                    />
+                  ))}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </Link>
 
       {/* action cards */}
       <div className="grid gap-5 sm:grid-cols-3">
