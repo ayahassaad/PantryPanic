@@ -211,6 +211,7 @@ export default async function PlannerPage({
       dayLabel: DAY_LABELS[i] ?? "",
       dayNumber: day.getUTCDate(),
       isToday: dateISO === todayISO,
+      isPast: dateISO < todayISO,
       entries: Object.fromEntries(
         MEAL_SLOTS.map((slot) => [slot, toEntryView(entryByCell.get(`${dateISO}_${slot}`))]),
       ) as MobileDay["entries"],
@@ -374,8 +375,11 @@ export default async function PlannerPage({
           <div />
           {weekDays.map((day, i) => {
             const isToday = toISODate(day) === todayISO;
+            // ISO dates (YYYY-MM-DD) sort the same as strings as they do
+            // as dates, so a plain string comparison is enough here.
+            const isPast = toISODate(day) < todayISO;
             return (
-              <div key={toISODate(day)} className="text-center">
+              <div key={toISODate(day)} className={`text-center ${isPast ? "opacity-50" : ""}`}>
                 <p className="text-[11px] font-extrabold uppercase tracking-wide text-ink-soft">
                   {DAY_LABELS[i]}
                 </p>
@@ -413,6 +417,7 @@ export default async function PlannerPage({
                     hasRecipes={hasRecipes}
                     cellClass={slotStyle.cell}
                     textClass={slotStyle.text}
+                    isPast={dateISO < todayISO}
                   />
                 );
               }),

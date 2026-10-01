@@ -70,6 +70,10 @@ interface PlannerCellProps {
   hasRecipes: boolean;
   cellClass: string;
   textClass: string;
+  // A day before today — the cell is dimmed so the days still left to
+  // plan stand out, but stays fully usable (you can still look back at,
+  // or fix up, what you ate on Monday).
+  isPast?: boolean;
 }
 
 // Removing a planned meal clears the cell the instant you click the "x",
@@ -85,7 +89,11 @@ export function PlannerCell({
   hasRecipes,
   cellClass,
   textClass,
+  isPast = false,
 }: PlannerCellProps) {
+  // Back to full strength on hover/keyboard focus, so a past meal is
+  // still comfortable to read or edit once you actually go to it.
+  const pastClass = isPast ? "opacity-60 hover:opacity-100 focus-within:opacity-100" : "";
   const [entry, setEntry] = useState(initialEntry);
   const [pendingRemoval, setPendingRemoval] = useState<PlannerEntryView | null>(null);
   // Whether RecipeModal is open — it owns all three ways of filling this
@@ -280,7 +288,7 @@ export function PlannerCell({
   if (entry) {
     return (
       <div
-        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass}`}
+        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2.5 ${cellClass} ${pastClass}`}
       >
         {entry.recipeId ? (
           <Link
@@ -369,7 +377,7 @@ export function PlannerCell({
     <>
       <div
         onClick={() => toggleFillSelection(dateISO, slot)}
-        className={`relative flex ${CELL_HEIGHT} items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${
+        className={`relative flex ${CELL_HEIGHT} items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${pastClass} ${
           selectedForFill
             ? "cursor-pointer border-blueberry-400 bg-blueberry-50"
             : isSelecting

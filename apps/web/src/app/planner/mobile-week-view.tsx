@@ -15,6 +15,7 @@ export interface MobileDay {
   dayLabel: string;
   dayNumber: number;
   isToday: boolean;
+  isPast: boolean;
   entries: Partial<Record<MealSlot, PlannerEntryView | null>>;
 }
 
@@ -56,7 +57,7 @@ export function MobileWeekView({
             className={`flex flex-none flex-col items-center gap-0.5 rounded-xl border-2 px-3 py-1.5 transition ${
               d.dateISO === day?.dateISO
                 ? "border-ink bg-tomato-400 text-cream"
-                : "border-ink-faint bg-cream-card text-ink-soft"
+                : `border-ink-faint bg-cream-card text-ink-soft ${d.isPast ? "opacity-50" : ""}`
             }`}
           >
             <span className="text-[10px] font-extrabold uppercase tracking-wide">
@@ -93,6 +94,7 @@ export function MobileWeekView({
                   hasRecipes={hasRecipes}
                   cellClass={style.cell}
                   textClass={style.text}
+                  isPast={day.isPast}
                 />
               </div>
             );
