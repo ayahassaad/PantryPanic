@@ -132,6 +132,17 @@ const GRAPE_CLUSTER: Array<[number, number]> = [
   [70, 142],
 ];
 
+// Broccoli's florets as [cx, cy, r] — fixed tuples for the same reason
+// as GRAPE_CLUSTER above.
+const BROCCOLI_FLORETS: Array<[number, number, number]> = [
+  [38, 86, 28],
+  [102, 86, 28],
+  [50, 58, 26],
+  [90, 58, 26],
+  [70, 46, 26],
+  [70, 92, 32],
+];
+
 export function FoodMascot({ kind, className }: { kind: FoodKind; className?: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [pupilOffset, setPupilOffset] = useState(REST_OFFSET);
@@ -223,21 +234,30 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "carrot":
       return (
         <>
+          {/* Three feathery fronds on top (the old tufts were two thin
+              slivers), a fuller body that tapers to a point, and the
+              little creases a real carrot has. */}
           <path
-            d="M60,32 C56,20 46,16 38,19 C46,24 50,28 52,33 Z M80,32 C84,20 94,16 102,19 C94,24 90,28 88,33 Z"
-            fill="oklch(62% 0.13 145)"
+            d="M70,42 C64,26 66,10 74,2 C82,12 82,28 76,42 Z M62,42 C50,34 42,22 42,8 C54,14 64,24 68,40 Z M80,42 C86,28 96,20 108,16 C106,28 96,38 84,44 Z"
+            fill="oklch(62% 0.14 145)"
             stroke={STROKE}
             strokeWidth="3"
             strokeLinejoin="round"
           />
           <path
-            d="M70,40 C95,42 110,70 104,100 C98,130 84,150 70,152 C56,150 42,130 36,100 C30,70 45,42 70,40 Z"
-            fill="oklch(68% 0.17 55)"
+            d="M70,38 C94,38 110,58 106,90 C102,120 86,146 70,154 C54,146 38,120 34,90 C30,58 46,38 70,38 Z"
+            fill="oklch(70% 0.18 52)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
-          <path d="M55,58 L58,48 M70,54 L70,42 M85,58 L82,48" stroke="oklch(48% 0.12 145)" strokeWidth="2.2" strokeLinecap="round" />
+          <path
+            d="M38,104 l11,2 M92,116 l-10,3 M48,128 l9,1 M82,136 l-8,2 M96,56 l-9,3 M44,58 l8,3"
+            stroke="oklch(56% 0.16 48)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+          <path d="M46,62 C50,52 56,46 64,44" fill="none" stroke="oklch(84% 0.1 70)" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />
         </>
       );
     case "egg":
@@ -284,11 +304,28 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "citrus":
       return (
         <>
-          <circle cx="70" cy="92" r="56" fill="oklch(80% 0.15 95)" stroke={STROKE} strokeWidth="4.5" />
-          <circle cx="70" cy="92" r="40" fill="none" stroke={CREAM} strokeWidth="3" />
+          {/* A slice with a proper rind, white pith and juicy segments,
+              plus a leaf — the old one was a flat yellow disc with
+              spokes. */}
           <path
-            d="M70,92 L102,92 M70,92 L86,120 M70,92 L54,120 M70,92 L38,92 M70,92 L54,64 M70,92 L86,64"
+            d="M74,38 C78,22 92,14 106,18 C102,32 90,42 74,38 Z"
+            fill="oklch(62% 0.14 145)"
+            stroke={STROKE}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <circle cx="70" cy="92" r="56" fill="oklch(80% 0.16 85)" stroke={STROKE} strokeWidth="4.5" />
+          <circle cx="70" cy="92" r="47" fill={CREAM} />
+          <circle cx="70" cy="92" r="42" fill="oklch(88% 0.15 98)" />
+          <path
+            d="M70,92 L112,92 M70,92 L100,122 M70,92 L70,134 M70,92 L40,122 M70,92 L28,92 M70,92 L40,62 M70,92 L70,50 M70,92 L100,62"
             stroke={CREAM}
+            strokeWidth="3.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M82,116 l3,5 M56,120 l-2,5 M96,104 l5,2 M42,104 l-5,2"
+            stroke="oklch(78% 0.14 92)"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
@@ -297,87 +334,141 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "grape":
       return (
         <>
-          <path d="M70,38 C70,28 66,20 58,14" fill="none" stroke="oklch(48% 0.12 145)" strokeWidth="3" strokeLinecap="round" />
+          {/* Same bunch, with a leaf and a woody stem on top and a glint
+              on every grape so it reads as round fruit, not flat dots. */}
+          <path d="M70,40 C70,28 66,20 58,12" fill="none" stroke={STROKE} strokeWidth="8" strokeLinecap="round" />
+          <path d="M70,40 C70,28 66,20 58,12" fill="none" stroke="oklch(52% 0.08 60)" strokeWidth="4" strokeLinecap="round" />
+          <path
+            d="M70,30 C78,14 98,8 112,16 C108,32 92,40 70,30 Z"
+            fill="oklch(62% 0.14 145)"
+            stroke={STROKE}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
           {GRAPE_CLUSTER.map(([cx, cy]) => (
-            <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="19" fill="oklch(52% 0.13 290)" stroke={STROKE} strokeWidth="3" />
+            <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="19" fill="oklch(54% 0.15 300)" stroke={STROKE} strokeWidth="3" />
+          ))}
+          {GRAPE_CLUSTER.map(([cx, cy]) => (
+            <path
+              key={`glint-${cx}-${cy}`}
+              d={`M${cx - 11},${cy - 4} C${cx - 10},${cy - 10} ${cx - 6},${cy - 13} ${cx - 1},${cy - 13}`}
+              fill="none"
+              stroke="oklch(80% 0.09 300)"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
           ))}
         </>
       );
     case "cheese":
       return (
         <>
+          {/* A wider wedge in a brighter cheese-yellow, with holes that
+              look like holes (darker, not white dots) and a couple
+              biting into the edge. */}
           <path
-            d="M70,14 C90,40 108,90 118,138 C118,146 112,150 104,150 L36,150 C28,150 22,146 22,138 C32,90 50,40 70,14 Z"
-            fill="oklch(78% 0.13 75)"
+            d="M70,12 C92,40 114,92 124,136 C126,146 120,152 110,152 L30,152 C20,152 14,146 16,136 C26,92 48,40 70,12 Z"
+            fill="oklch(86% 0.15 92)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
-          <circle cx="53" cy="98" r="8" fill={CREAM} stroke={STROKE} strokeWidth="2" />
-          <circle cx="82" cy="118" r="7" fill={CREAM} stroke={STROKE} strokeWidth="2" />
-          <circle cx="64" cy="132" r="6" fill={CREAM} stroke={STROKE} strokeWidth="2" />
-          <circle cx="92" cy="88" r="5" fill={CREAM} stroke={STROKE} strokeWidth="1.8" />
+          <circle cx="50" cy="128" r="8" fill="oklch(74% 0.14 85)" stroke={STROKE} strokeWidth="2.5" />
+          <circle cx="92" cy="132" r="7" fill="oklch(74% 0.14 85)" stroke={STROKE} strokeWidth="2.5" />
+          <circle cx="70" cy="40" r="6" fill="oklch(74% 0.14 85)" stroke={STROKE} strokeWidth="2.5" />
+          <circle cx="104" cy="106" r="5" fill="oklch(74% 0.14 85)" stroke={STROKE} strokeWidth="2.2" />
+          <circle cx="34" cy="108" r="4" fill="oklch(74% 0.14 85)" stroke={STROKE} strokeWidth="2.2" />
+          <path d="M60,36 C56,44 52,52 49,60" fill="none" stroke={CREAM} strokeWidth="3.5" strokeLinecap="round" opacity="0.7" />
         </>
       );
     case "mug":
       return (
         <>
-          {/* Trapezoid body (wider rim, narrower base) reads as an
-              actual cup silhouette instead of the plain rounded
-              rectangle this used to be, which looked more like a
-              book/tablet than a mug. */}
-          <path d="M108,72 C130,72 130,104 108,104" fill="none" stroke={STROKE} strokeWidth="5" />
+          {/* A coloured mug with coffee showing at the rim and curlier
+              steam — the old one was a white cup on a (usually) white
+              card, with a brown stripe standing in for the coffee. */}
           <path
-            d="M30,46 L110,46 C114,46 116,49 116,54 L108,138 C107,144 102,148 96,148 L44,148 C38,148 33,144 32,138 L24,54 C24,49 26,46 30,46 Z"
-            fill={CREAM}
+            d="M48,34 C42,26 54,22 48,12 M70,32 C64,24 76,20 70,8 M92,34 C86,26 98,22 92,12"
+            fill="none"
+            stroke="oklch(72% 0.02 150)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+          />
+          <path d="M106,74 C132,70 134,112 104,110" fill="none" stroke={STROKE} strokeWidth="13" strokeLinecap="round" />
+          <path d="M106,74 C132,70 134,112 104,110" fill="none" stroke="oklch(65% 0.13 290)" strokeWidth="5" strokeLinecap="round" />
+          <path
+            d="M24,50 L116,50 L109,138 C108,144 103,148 97,148 L43,148 C37,148 32,144 31,138 Z"
+            fill="oklch(65% 0.13 290)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
-          <path d="M28,64 L112,64" stroke="oklch(45% 0.08 50)" strokeWidth="10" strokeLinecap="round" opacity="0.9" />
-          <path
-            d="M50,40 C46,32 54,28 50,20 M69,40 C65,32 73,28 69,20 M88,40 C84,32 92,28 88,20"
-            fill="none"
-            stroke="oklch(70% 0.02 150)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
+          <ellipse cx="70" cy="50" rx="46" ry="9" fill="oklch(40% 0.07 50)" stroke={STROKE} strokeWidth="4" />
+          <path d="M44,49 C54,46 66,45 78,46" fill="none" stroke="oklch(58% 0.08 55)" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M36,128 C52,138 88,138 104,128" fill="none" stroke="oklch(80% 0.08 290)" strokeWidth="4" strokeLinecap="round" />
         </>
       );
     case "broccoli":
       return (
         <>
-          <rect x="58" y="108" width="24" height="42" rx="7" fill="oklch(93% 0.03 85)" stroke={STROKE} strokeWidth="3.5" />
-          <circle cx="42" cy="88" r="30" fill="oklch(58% 0.14 148)" stroke={STROKE} strokeWidth="4" />
-          <circle cx="98" cy="88" r="30" fill="oklch(58% 0.14 148)" stroke={STROKE} strokeWidth="4" />
-          <circle cx="70" cy="58" r="34" fill="oklch(58% 0.14 148)" stroke={STROKE} strokeWidth="4" />
+          {/* One bumpy cloud of florets (every circle is drawn twice —
+              outlined, then filled again without an outline — so the
+              outlines only show around the outside, not as lines across
+              the face), on a pale green stalk. */}
+          <path
+            d="M56,110 L56,140 C56,148 62,152 70,152 C78,152 84,148 84,140 L84,110 Z"
+            fill="oklch(82% 0.1 135)"
+            stroke={STROKE}
+            strokeWidth="4"
+            strokeLinejoin="round"
+          />
+          {BROCCOLI_FLORETS.map(([cx, cy, r]) => (
+            <circle key={`o-${cx}-${cy}`} cx={cx} cy={cy} r={r} fill="oklch(58% 0.15 148)" stroke={STROKE} strokeWidth="4.5" />
+          ))}
+          {BROCCOLI_FLORETS.map(([cx, cy, r]) => (
+            <circle key={`f-${cx}-${cy}`} cx={cx} cy={cy} r={r - 2} fill="oklch(58% 0.15 148)" />
+          ))}
+          <path
+            d="M26,74 c4,-5 10,-5 13,0 M94,40 c4,-4 9,-4 12,0 M104,96 c3,-4 8,-4 11,0 M48,34 c4,-4 9,-4 12,0 M24,98 c3,-3 7,-3 9,0 M72,26 c3,-3 7,-3 9,0"
+            fill="none"
+            stroke="oklch(44% 0.12 148)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
         </>
       );
     case "fish":
       return (
         <>
-          <ellipse cx="62" cy="88" rx="52" ry="46" fill="oklch(72% 0.1 220)" stroke={STROKE} strokeWidth="4.5" />
-          {/* Bowtie-shaped tail fin, unmistakably a fish tail rather
-              than the barely-there nub the first version had. */}
+          {/* A brighter fish with a curved, forked tail, a proper back
+              fin, a few scales and a couple of bubbles. */}
+          <circle cx="16" cy="38" r="5" fill="none" stroke="oklch(72% 0.1 225)" strokeWidth="2.5" />
+          <circle cx="28" cy="22" r="3.5" fill="none" stroke="oklch(72% 0.1 225)" strokeWidth="2.5" />
           <path
-            d="M104,68 L134,44 L128,88 L134,132 L104,108 Z"
-            fill="oklch(72% 0.1 220)"
+            d="M102,72 C116,64 126,52 134,40 C133,58 127,76 127,88 C127,100 133,118 134,136 C126,124 116,112 102,104 Z"
+            fill="oklch(62% 0.13 235)"
             stroke={STROKE}
             strokeWidth="4"
             strokeLinejoin="round"
           />
           <path
-            d="M62,42 L74,24 L84,44 Z"
-            fill="oklch(72% 0.1 220)"
+            d="M48,48 C52,30 68,22 86,24 C82,34 82,42 86,50 Z"
+            fill="oklch(62% 0.13 235)"
             stroke={STROKE}
-            strokeWidth="3"
+            strokeWidth="3.5"
             strokeLinejoin="round"
           />
+          <ellipse cx="62" cy="88" rx="52" ry="46" fill="oklch(74% 0.12 225)" stroke={STROKE} strokeWidth="4.5" />
           <path
-            d="M40,66 C48,62 58,62 64,66 M36,108 C48,116 64,116 76,108 M96,80 C100,86 100,94 96,100"
+            d="M18,104 C34,128 84,134 106,110 C88,120 42,120 18,104 Z"
+            fill="oklch(88% 0.06 220)"
+            opacity="0.8"
+          />
+          <path
+            d="M92,62 c6,4 6,11 0,15 M100,82 c6,4 6,11 0,15 M90,100 c5,3 5,9 0,12"
             fill="none"
-            stroke="oklch(56% 0.09 220)"
-            strokeWidth="3"
+            stroke="oklch(58% 0.12 232)"
+            strokeWidth="2.5"
             strokeLinecap="round"
           />
         </>
@@ -444,45 +535,41 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "shrimp":
       return (
         <>
-          {/* A plump prawn seen side-on: tail fan, two long feelers, a
-              pointed beak and banded segments down the belly. The face
-              sits on the body now — the old thick "C" stroke left the
-              eyes floating in the hole in the middle of it. */}
+          {/* Third attempt at a shrimp. What makes one recognisable is the
+              curl, so the body is a fat comma: a big round head end (wide
+              enough to carry the face) sweeping down into a tail that
+              hooks back up on the left and ends in a two-lobed fan.
+              Shell bands follow the curve and two feelers sweep back
+              off the head. */}
           <path
-            d="M60,38 C54,22 40,12 24,12 M72,36 C70,20 60,8 46,3"
-            fill="none"
-            stroke="oklch(56% 0.14 35)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M40,122 L10,116 L18,132 L8,146 L34,142 Z"
-            fill="oklch(62% 0.16 30)"
-            stroke={STROKE}
-            strokeWidth="3.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M82,38 L96,16 L100,44 Z"
-            fill="oklch(62% 0.16 30)"
-            stroke={STROKE}
-            strokeWidth="3.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M70,34 C100,34 116,58 114,90 C112,122 94,144 66,144 C42,144 26,128 24,104 C22,70 40,34 70,34 Z"
-            fill="oklch(74% 0.14 35)"
-            stroke={STROKE}
-            strokeWidth="4.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M32,116 C50,128 90,128 108,114 M44,132 C56,140 82,140 96,130 M34,58 C46,50 58,46 70,46"
+            d="M88,34 C92,18 106,8 124,8 M80,32 C80,14 92,2 110,-2"
             fill="none"
             stroke="oklch(58% 0.15 32)"
             strokeWidth="3"
             strokeLinecap="round"
           />
+          <path
+            d="M28,110 C16,102 8,92 4,80 C0,94 2,106 10,114 C2,120 -2,130 0,142 C10,138 22,132 32,124 Z"
+            fill="oklch(64% 0.17 30)"
+            stroke={STROKE}
+            strokeWidth="3.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M74,30 C102,30 120,54 116,84 C112,112 94,134 70,142 C50,148 30,142 20,126 C16,118 20,108 28,108 C36,116 46,118 52,112 C38,102 28,84 30,68 C34,44 52,30 74,30 Z"
+            fill="oklch(76% 0.14 35)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M44,46 C58,54 90,54 104,44 M110,104 C98,102 88,110 84,124 M80,138 C76,128 68,122 58,122 M46,144 C46,136 42,130 34,126"
+            fill="none"
+            stroke="oklch(60% 0.16 32)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <path d="M38,62 C40,52 46,44 54,40" fill="none" stroke="oklch(88% 0.08 45)" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />
         </>
       );
     case "onion":
@@ -519,28 +606,22 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "garlic":
       return (
         <>
-          {/* Lumpy/bulbous outline (individual clove bumps) instead of
-              a smooth oval — the first pass was nearly indistinguishable
-              from onion right next to it. */}
+          {/* A whole bulb: pointed papery neck, cloves bulging along the
+              bottom, faint purple streaks and a few root hairs — and
+              clearly not the onion (golden, green sprout) next to it. */}
+          <path d="M61,144 l-3,8 M70,146 l0,9 M79,144 l3,8" stroke={STROKE} strokeWidth="2.5" strokeLinecap="round" />
           <path
-            d="M70,44 C90,42 100,60 96,80 C110,84 112,102 100,112 C104,126 92,138 78,134 C74,142 62,142 58,134 C44,138 32,126 36,112 C24,102 26,84 40,80 C36,60 50,42 70,44 Z"
-            fill="oklch(96% 0.01 85)"
+            d="M70,14 C72,32 78,42 90,50 C108,62 116,88 108,112 C102,132 92,146 82,142 C78,150 62,150 58,142 C48,146 38,132 32,112 C24,88 32,62 50,50 C62,42 68,32 70,14 Z"
+            fill="oklch(96% 0.012 85)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
           <path
-            d="M70,44 L70,134 M50,52 C44,78 44,108 54,132 M90,52 C96,78 96,108 86,132"
+            d="M70,26 C62,60 60,110 62,140 M70,26 C78,60 80,110 78,140 M52,52 C40,80 40,112 50,134 M88,52 C100,80 100,112 90,134"
             fill="none"
-            stroke="oklch(85% 0.02 85)"
+            stroke="oklch(78% 0.06 320)"
             strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M63,44 C59,30 63,18 70,12 M77,44 C81,30 77,18 70,12"
-            fill="none"
-            stroke="oklch(60% 0.1 90)"
-            strokeWidth="3"
             strokeLinecap="round"
           />
         </>
@@ -548,21 +629,27 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "mushroom":
       return (
         <>
-          {/* Pale tan cap (a button mushroom) instead of the first
-              pass's pinkish-salmon color, which read more like ham than
-              a mushroom. */}
+          {/* A bigger, rounder brown cap with pale spots and a hint of
+              gills, on a chunkier stalk wide enough for the smile. */}
           <path
-            d="M24,80 C24,50 44,30 70,30 C96,30 116,50 116,80 C116,87 111,92 102,92 L38,92 C29,92 24,87 24,80 Z"
-            fill="oklch(85% 0.03 70)"
+            d="M52,94 L50,136 C50,146 58,152 70,152 C82,152 90,146 90,136 L88,94 Z"
+            fill="oklch(94% 0.02 85)"
+            stroke={STROKE}
+            strokeWidth="4"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M16,84 C16,48 40,24 70,24 C100,24 124,48 124,84 C124,92 118,97 108,97 L32,97 C22,97 16,92 16,84 Z"
+            fill="oklch(66% 0.09 55)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
-          <path d="M32,84 C40,90 100,90 108,84" fill="none" stroke="oklch(66% 0.05 60)" strokeWidth="3" opacity="0.6" />
-          <rect x="56" y="92" width="28" height="52" rx="12" fill="oklch(94% 0.015 85)" stroke={STROKE} strokeWidth="4" />
-          <circle cx="44" cy="58" r="5" fill={CREAM} opacity="0.7" />
-          <circle cx="66" cy="46" r="4" fill={CREAM} opacity="0.7" />
-          <circle cx="92" cy="60" r="5" fill={CREAM} opacity="0.7" />
+          <ellipse cx="42" cy="46" rx="8" ry="6" fill="oklch(88% 0.04 75)" transform="rotate(-30 42 46)" />
+          <ellipse cx="72" cy="36" rx="7" ry="5" fill="oklch(88% 0.04 75)" />
+          <ellipse cx="102" cy="50" rx="8" ry="6" fill="oklch(88% 0.04 75)" transform="rotate(30 102 50)" />
+          <circle cx="26" cy="70" r="4" fill="oklch(88% 0.04 75)" />
+          <circle cx="114" cy="74" r="4" fill="oklch(88% 0.04 75)" />
         </>
       );
     case "potato":
@@ -723,21 +810,23 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "avocado":
       return (
         <>
+          {/* A pear-shaped half (narrow top, wide bottom) with the stone
+              sitting low like a round belly — it used to sit dead centre
+              behind the face and read as a big brown nose. */}
           <path
-            d="M70,30 C96,34 112,60 110,92 C108,124 90,148 70,148 C50,148 32,124 30,92 C28,60 44,34 70,30 Z"
-            fill="oklch(58% 0.12 140)"
+            d="M70,20 C88,22 98,42 100,58 C104,78 116,92 116,112 C116,136 96,152 70,152 C44,152 24,136 24,112 C24,92 36,78 40,58 C42,42 52,22 70,20 Z"
+            fill="oklch(50% 0.11 140)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
           <path
-            d="M70,44 C88,48 100,68 98,92 C96,116 82,134 70,134 C58,134 44,116 42,92 C40,68 52,48 70,44 Z"
-            fill="oklch(88% 0.13 120)"
-            stroke={STROKE}
-            strokeWidth="3"
-            strokeLinejoin="round"
+            d="M70,20 C88,22 98,42 100,58 C104,78 116,92 116,112 C116,136 96,152 70,152 C44,152 24,136 24,112 C24,92 36,78 40,58 C42,42 52,22 70,20 Z"
+            fill="oklch(88% 0.13 118)"
+            transform="translate(70 92) scale(0.84) translate(-70 -92)"
           />
-          <circle cx="70" cy="92" r="20" fill="oklch(55% 0.14 50)" stroke={STROKE} strokeWidth="3" />
+          <circle cx="70" cy="126" r="14" fill="oklch(52% 0.12 50)" stroke={STROKE} strokeWidth="3" />
+          <path d="M63,121 C65,118 68,116 72,116" fill="none" stroke="oklch(72% 0.1 60)" strokeWidth="3" strokeLinecap="round" />
         </>
       );
     case "spinach":
@@ -804,34 +893,62 @@ function FoodBody({ kind }: { kind: FoodKind }) {
     case "apple":
       return (
         <>
+          {/* A real apple outline — dimple at the top, two soft lobes at
+              the bottom — with a glossy highlight, where it used to be a
+              plain red oval. */}
+          <path d="M70,54 C68,40 70,28 78,18" stroke={STROKE} strokeWidth="8" strokeLinecap="round" fill="none" />
+          <path d="M70,54 C68,40 70,28 78,18" stroke="oklch(48% 0.08 60)" strokeWidth="4" strokeLinecap="round" fill="none" />
           <path
-            d="M70,50 C96,46 114,66 112,94 C110,122 92,146 70,146 C48,146 30,122 28,94 C26,66 44,46 70,50 Z"
-            fill="oklch(58% 0.19 25)"
+            d="M76,30 C84,16 100,12 112,20 C104,32 90,38 76,30 Z"
+            fill="oklch(62% 0.14 145)"
+            stroke={STROKE}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M70,52 C60,40 38,40 28,60 C18,82 28,126 48,142 C58,150 64,148 70,144 C76,148 82,150 92,142 C112,126 122,82 112,60 C102,40 80,40 70,52 Z"
+            fill="oklch(60% 0.2 25)"
             stroke={STROKE}
             strokeWidth="4.5"
             strokeLinejoin="round"
           />
-          <path d="M70,50 C68,38 70,28 76,20" stroke="oklch(48% 0.1 70)" strokeWidth="4" strokeLinecap="round" fill="none" />
-          <path
-            d="M76,24 C84,16 94,16 100,24 C92,28 84,30 76,24 Z"
-            fill="oklch(62% 0.14 145)"
-            stroke={STROKE}
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-          />
-          <ellipse cx="52" cy="76" rx="9" ry="6" fill="oklch(70% 0.15 45)" opacity="0.6" />
+          <path d="M36,70 C38,60 44,54 52,50" fill="none" stroke="oklch(82% 0.1 30)" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
         </>
       );
     case "chocolate":
       return (
         <>
-          <rect x="26" y="40" width="88" height="100" rx="10" fill="oklch(38% 0.08 40)" stroke={STROKE} strokeWidth="4.5" />
+          {/* A bar half out of its wrapper: squares of chocolate on top,
+              a torn foil edge, and a red wrapper below — no more grid
+              lines ruled straight across the face. */}
+          <rect x="28" y="24" width="84" height="110" rx="8" fill="oklch(40% 0.08 45)" stroke={STROKE} strokeWidth="4.5" />
           <path
-            d="M26,73 L114,73 M26,107 L114,107 M59,40 L59,140 M92,40 L92,140"
+            d="M56,26 L56,60 M84,26 L84,58 M30,52 L110,52"
             stroke="oklch(30% 0.06 40)"
             strokeWidth="3"
             strokeLinecap="round"
           />
+          <path
+            d="M34,32 L50,32 M62,32 L78,32 M90,32 L104,32"
+            stroke="oklch(54% 0.08 50)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <path
+            d="M26,126 L114,126 L114,142 C114,148 110,152 104,152 L36,152 C30,152 26,148 26,142 Z"
+            fill="oklch(62% 0.19 25)"
+            stroke={STROKE}
+            strokeWidth="4.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M24,128 L32,118 L40,126 L48,116 L56,126 L64,116 L72,126 L80,116 L88,126 L96,116 L104,126 L112,118 L116,128 Z"
+            fill="oklch(92% 0.01 250)"
+            stroke={STROKE}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path d="M36,141 L104,141" stroke="oklch(86% 0.12 90)" strokeWidth="4" strokeLinecap="round" />
         </>
       );
     case "tomato":
@@ -850,6 +967,7 @@ function FoodBody({ kind }: { kind: FoodKind }) {
           />
           <ellipse cx="38" cy="90" rx="9" ry="6" fill="oklch(68% 0.17 55)" opacity="0.75" />
           <ellipse cx="100" cy="88" rx="9" ry="6" fill="oklch(68% 0.17 55)" opacity="0.75" />
+          <path d="M30,62 C34,50 44,42 56,38" fill="none" stroke="oklch(82% 0.1 30)" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
         </>
       );
   }
