@@ -65,6 +65,14 @@ const CARD_SHADOWS = [
 ];
 const CARD_TILTS = ["-rotate-1", "rotate-1", "-rotate-[0.4deg]", "rotate-[0.6deg]"];
 
+// A small badge in the corner of the card's picture saying where a
+// recipe came from — only for the two kinds that aren't simply "one you
+// typed in yourself" (source: "user"), which needs no label.
+const SOURCE_BADGES: Partial<Record<RecipeListItem["source"], { label: string; className: string }>> = {
+  ai: { label: "\u2726 AI", className: "bg-blueberry-400 text-cream" },
+  seed: { label: "Starter", className: "bg-cream-card text-ink" },
+};
+
 type DoodleShape = (props: { className?: string; style?: CSSProperties }) => JSX.Element;
 
 const CARD_DOODLE_SHAPES: DoodleShape[] = [
@@ -283,6 +291,7 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
           const accent = CARD_ACCENTS[index % CARD_ACCENTS.length] ?? "bg-tomato-400";
           const shadow = CARD_SHADOWS[index % CARD_SHADOWS.length] ?? "hand-shadow-tomato";
           const tilt = CARD_TILTS[index % CARD_TILTS.length] ?? "-rotate-1";
+          const sourceBadge = SOURCE_BADGES[recipe.source];
 
           return (
             <li
@@ -311,10 +320,17 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
               </div>
 
               <div
-                className={`wobble-b mb-3.5 flex h-32 items-center justify-center border-2 border-ink ${
+                className={`wobble-b relative mb-3.5 flex h-32 items-center justify-center border-2 border-ink ${
                   recipe.image_url ? "" : accent
                 }`}
               >
+                {sourceBadge && (
+                  <span
+                    className={`absolute left-2 top-2 rounded-full border-2 border-ink px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${sourceBadge.className}`}
+                  >
+                    {sourceBadge.label}
+                  </span>
+                )}
                 {recipe.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element -- a
                   // handful of user-uploaded images doesn't need next/image's
