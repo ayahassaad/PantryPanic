@@ -137,18 +137,26 @@ function cardDoodles(cardIndex: number): CardDoodle[] {
 interface RecipeGridProps {
   recipes: RecipeListItem[];
   favoritedIds: string[];
-  query: string;
+  // Whatever ?q= the page was opened with — only the search box's
+  // starting text; from then on the box is plain local state.
+  initialQuery: string;
   initialTab: "all" | "favorites";
 }
 
-// Tabs + the card grid, as one client component so switching between
-// "All" and "Favorites" is an instant local re-render instead of a full
-// round trip back to the server (which is what made it feel laggy when
-// this was a <Link href="/recipes?tab=..."> navigation). Everything it
-// needs — the recipe list and which ones are favorited — is fetched once
-// by the server page and handed down as plain props.
-export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, initialTab }: RecipeGridProps) {
+// Search box, tabs + the card grid, as one client component so typing in
+// the search box or switching between "All" and "Favorites" is an
+// instant local re-render instead of a full round trip back to the
+// server (which is what made it feel laggy when the tabs were
+// <Link href="/recipes?tab=..."> navigations, and the search a form you
+// had to submit). Everything it needs — the recipe list, each recipe's
+// ingredient names, and which ones are favorited — is fetched once by
+// the server page and handed down as plain props.
+export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, initialQuery, initialTab }: RecipeGridProps) {
   const [tab, setTab] = useState<"all" | "favorites">(initialTab);
+  const [search, setSearch] = useState(initialQuery);
+  // What's actually matched against: trimmed and lowercased once here
+  // rather than on every recipe.
+  const query = search.trim().toLowerCase();
   // Its own copy of "which ids are favorited," kept current by
   // FavoriteButton's onToggle — so starring/unstarring a recipe updates
   // whether it's in the Favorites tab immediately, not just its star
@@ -220,9 +228,20 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
     tab === "favorites"
       ? visibleRecipes.filter((recipe) => favoritedIds.has(recipe.id))
       : visibleRecipes;
-  const displayedRecipes = activeTag
+  const taggedRecipes = activeTag
     ? tabRecipes.filter((recipe) => recipe.tags.includes(activeTag))
     : tabRecipes;
+  // A search matches on the title or on any ingredient — "what can I
+  // make with the chicken I've got" is as common a question as "where's
+  // that curry" — using the ingredient names the page already loads for
+  // the no-photo placeholder.
+  const displayedRecipes = query
+    ? taggedRecipes.filter(
+        (recipe) =>
+          recipe.title.toLowerCase().includes(query) ||
+          recipe.ingredientNames.some((name) => name.toLowerCase().includes(query)),
+      )
+    : taggedRecipes;
 
   // Every tag in use, most-used first (ties alphabetical) — built from
   // the whole recipe box rather than the current tab, so the row of chips
@@ -239,6 +258,26 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
 
   return (
     <>
+      <div className="mb-8 flex max-w-lg gap-2">
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by name or ingredient"
+          aria-label="Search recipes by name or ingredient"
+          className="flex-1 rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none placeholder:text-ink-faint focus:border-tomato-400"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="flex items-center px-2 text-sm font-bold text-ink-soft underline underline-offset-2"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div className="mb-6 flex gap-2">
         <button
           type="button"
@@ -287,11 +326,13 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
 
       {displayedRecipes.length === 0 && (tab === "favorites" || query || activeTag) && (
         <p className="text-ink-soft">
-          {activeTag
-            ? `No ${tab === "favorites" ? "favorites" : "recipes"} tagged "${activeTag}".`
-            : tab === "favorites"
-              ? "No favorites yet — tap the star on a recipe to add it here."
-              : `No recipes match "${query}".`}
+          {query
+            ? `No ${tab === "favorites" ? "favorites" : "recipes"} match "${search.trim()}"${
+                activeTag ? ` with the tag "${activeTag}"` : ""
+              }.`
+            : activeTag
+              ? `No ${tab === "favorites" ? "favorites" : "recipes"} tagged "${activeTag}".`
+              : "No favorites yet — tap the star on a recipe to add it here."}
         </p>
       )}
 

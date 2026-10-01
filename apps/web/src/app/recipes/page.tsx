@@ -13,14 +13,6 @@ type RecipeRow = Omit<RecipeListItem, "isOwner" | "ingredientNames"> & {
   owner_id: string | null;
 };
 
-function buildHref(params: { q?: string; tab?: string }): string {
-  const search = new URLSearchParams();
-  if (params.q) search.set("q", params.q);
-  if (params.tab) search.set("tab", params.tab);
-  const qs = search.toString();
-  return qs ? `/recipes?${qs}` : "/recipes";
-}
-
 export default async function RecipesPage({
   searchParams,
 }: {
@@ -44,17 +36,15 @@ export default async function RecipesPage({
   // null (public starter recipes) — enforced by Postgres, not this code.
   // owner_id itself is only fetched to compute isOwner below — it's never
   // passed down to the client as-is.
-  let recipesQuery = supabase
+  //
+  // Always the whole recipe box, whatever ?q= says: searching happens in
+  // the browser now (see RecipeGrid), instantly as you type and across
+  // ingredient names as well as titles, so the server no longer filters
+  // by title itself.
+  const recipesQuery = supabase
     .from("recipes")
     .select("id, title, description, tags, source, image_url, owner_id")
     .order("created_at", { ascending: false });
-
-  if (query) {
-    // A plain parameterized ilike, not PostgREST's .or() string DSL — so
-    // there's nothing a search term could contain (a comma, a paren)
-    // that would break or reshape the filter itself.
-    recipesQuery = recipesQuery.ilike("title", `%${query}%`);
-  }
 
   const [{ data: recipeRows, error }, { data: favoriteRows }] = await Promise.all([
     recipesQuery.returns<RecipeRow[]>(),
@@ -125,49 +115,21 @@ export default async function RecipesPage({
         </div>
       </div>
 
-      {/* Plain GET form — no client JS needed. Submitting just navigates
-          to /recipes?q=..., which this Server Component re-renders with
-          the filtered results. Carries the active tab along so searching
-          doesn't bounce you back to "All" on reload. */}
-      <form className="mb-8 flex max-w-lg gap-2">
-        {initialTab === "favorites" && <input type="hidden" name="tab" value="favorites" />}
-        <input
-          type="text"
-          name="q"
-          defaultValue={query}
-          placeholder="Search recipes by name"
-          className="flex-1 rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none placeholder:text-ink-faint focus:border-tomato-400"
-        />
-        <button
-          type="submit"
-          className="rounded-xl border-2 border-ink bg-cream-deep px-4 py-2.5 text-sm font-bold text-ink transition hover:bg-cream"
-        >
-          Search
-        </button>
-        {query && (
-          <Link
-            href={buildHref({ tab: initialTab === "favorites" ? "favorites" : undefined })}
-            className="flex items-center px-2 text-sm font-bold text-ink-soft underline underline-offset-2"
-          >
-            Clear
-          </Link>
-        )}
-      </form>
-
       {error && (
         <p className="wobble-btn mb-6 border-2 border-ink bg-tomato-50 px-4 py-3 text-sm font-bold text-tomato-700">
           Couldn&apos;t load recipes: {error.message}
         </p>
       )}
 
-      {/* Tabs + card grid live in a client component so switching between
-          "All" and "Favorites" is an instant local re-render instead of
-          a full round trip back to the server. */}
+      {/* Search box, tabs + card grid live in a client component so
+          searching and switching between "All" and "Favorites" are
+          instant local re-renders instead of a full round trip back to
+          the server. */}
       {!error && (
         <RecipeGrid
           recipes={recipes}
           favoritedIds={favoritedIds}
-          query={query}
+          initialQuery={query}
           initialTab={initialTab}
         />
       )}
