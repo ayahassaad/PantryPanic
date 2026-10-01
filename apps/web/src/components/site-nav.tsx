@@ -165,7 +165,7 @@ export function SiteNav({ children, isAdmin = false }: { children: ReactNode; is
                       {active && (
                         <span
                           aria-hidden
-                          className="marker-swipe absolute -inset-x-1.5 bottom-0 top-[35%] -z-10 bg-citrus-400"
+                          className="marker-swipe absolute -inset-x-1 inset-y-0 -z-10 bg-citrus-400"
                         />
                       )}
                       {label}
