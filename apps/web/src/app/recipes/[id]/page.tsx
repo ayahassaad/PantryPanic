@@ -159,13 +159,31 @@ export default async function RecipeDetailPage({
           <p className="mb-3 font-display text-xs font-semibold uppercase tracking-widest text-leaf-600">
             Ingredients
           </p>
+          {/* Each ingredient (and each step below) can be ticked off
+              while cooking. A real checkbox per line, visually hidden,
+              with the visible dot and text styled off its :checked state
+              (Tailwind's peer-checked) — so it needs no JavaScript or
+              client component, works with the keyboard, and is
+              deliberately not saved anywhere: it's a "where was I?" aid
+              for one cooking session, and starts fresh on the next
+              visit. */}
           <ul className="flex flex-col gap-2">
             {ingredients.map((ingredient) => (
-              <li key={ingredient.id} className="flex items-center gap-2.5 text-sm font-bold text-ink">
-                <span className="h-2 w-2 flex-none rounded-full bg-leaf-400" />
-                {[ingredient.quantity, ingredient.unit, ingredient.name]
-                  .filter(Boolean)
-                  .join(" ")}
+              <li key={ingredient.id}>
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-bold text-ink">
+                  <input type="checkbox" className="peer sr-only" />
+                  <span
+                    aria-hidden
+                    className="flex h-4 w-4 flex-none items-center justify-center rounded-full border-2 border-ink bg-cream-card text-[9px] leading-none text-transparent transition peer-checked:bg-leaf-400 peer-checked:text-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-1"
+                  >
+                    &#10003;
+                  </span>
+                  <span className="transition peer-checked:text-ink-faint peer-checked:line-through">
+                    {[ingredient.quantity, ingredient.unit, ingredient.name]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </span>
+                </label>
               </li>
             ))}
           </ul>
@@ -178,11 +196,16 @@ export default async function RecipeDetailPage({
         </p>
         <ol className="flex flex-col gap-3.5">
           {recipe.steps.map((step, index) => (
-            <li key={index} className="flex gap-3 text-sm text-ink">
-              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 border-ink bg-tomato-400 font-display text-xs font-bold text-cream">
-                {index + 1}
-              </span>
-              <span className="pt-0.5">{step}</span>
+            <li key={index}>
+              <label className="flex cursor-pointer gap-3 text-sm text-ink">
+                <input type="checkbox" className="peer sr-only" />
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 border-ink bg-tomato-400 font-display text-xs font-bold text-cream transition peer-checked:bg-cream-deep peer-checked:text-ink-faint peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-1">
+                  {index + 1}
+                </span>
+                <span className="pt-0.5 transition peer-checked:text-ink-faint peer-checked:line-through">
+                  {step}
+                </span>
+              </label>
             </li>
           ))}
         </ol>
