@@ -8,6 +8,7 @@ import { removeMealPlanEntry, restoreMealPlanEntry, updateMealPlanServings } fro
 import { RecipeModal } from "./recipe-modal";
 import type { AssignedEntry } from "./recipe-actions";
 import { useFillWeekSelection } from "./fill-week-selection";
+import { useMoveMeal } from "./move-meal";
 
 export interface RecipeOption {
   id: string;
@@ -104,6 +105,20 @@ export function PlannerCell({
   const removalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isSelected, isSelecting, toggle: toggleFillSelection } = useFillWeekSelection();
   const selectedForFill = isSelected(dateISO, slot);
+  const { moving, isBusy, startMove, cancelMove, dropOn } = useMoveMeal();
+  const isMoveSource = moving !== null && moving.dateISO === dateISO && moving.slot === slot;
+  // Only for the highlight while a dragged meal hovers over this cell —
+  // :hover doesn't apply mid-drag, so it has to be tracked by hand.
+  const [dragOver, setDragOver] = useState(false);
+  // Both cells involved in a move pulse until the refreshed page shows
+  // the result (see move-meal.tsx).
+  const busyClass = isBusy(dateISO, slot) ? "animate-pulse" : "";
+
+  useEffect(() => {
+    if (!moving) {
+      setDragOver(false);
+    }
+  }, [moving]);
 
   // Every other update to this cell (add/remove/servings) is done
   // optimistically by calling a server action directly and setting local
@@ -257,6 +272,65 @@ export function PlannerCell({
     setModalOpen(false);
   }
 
+  // While a meal is picked up (dragged, or its Move button pressed —
+  // see move-meal.tsx), every cell is covered by one big button: on the
+  // cell it came from it cancels, on any other it's the drop target —
+  // "Move here" for an empty slot, "Swap" for a filled one. Covering the
+  // cell (rather than rewiring each control underneath) means nothing
+  // else in it — the recipe link, the stepper, "+ Add meal" — can be hit
+  // by accident mid-move, and the same element serves a click/tap and a
+  // drag-and-drop drop alike.
+  const moveOverlay = moving ? (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        if (isMoveSource) {
+          cancelMove();
+        } else {
+          dropOn(dateISO, slot);
+        }
+      }}
+      onDragOver={(event) => {
+        if (isMoveSource) {
+          return;
+        }
+        // preventDefault is what marks this element as a valid drop
+        // target at all — without it the browser never fires "drop".
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }}
+      onDragEnter={() => setDragOver(true)}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        if (!isMoveSource) {
+          dropOn(dateISO, slot);
+        }
+      }}
+      aria-label={
+        isMoveSource
+          ? "Cancel moving this meal"
+          : entry
+            ? `Swap with ${entry.recipeTitle ?? "this meal"}`
+            : "Move the meal here"
+      }
+      className={`absolute inset-0 z-20 flex items-center justify-center transition ${
+        isMoveSource
+          ? "bg-cream/70"
+          : dragOver
+            ? "bg-blueberry-400/40"
+            : "bg-blueberry-400/10 hover:bg-blueberry-400/40"
+      }`}
+    >
+      {/* pointer-events-none: otherwise dragging across the label counts
+          as leaving the button, and the highlight flickers. */}
+      <span className="pointer-events-none rounded-full border-2 border-ink bg-cream-card px-2 py-0.5 font-display text-[11px] font-semibold text-ink">
+        {isMoveSource ? "Cancel" : entry ? "Swap" : "Move here"}
+      </span>
+    </button>
+  ) : null;
+
   // Reversible removal: while pendingRemoval is set, the cell shows an
   // "Undo" chip instead of either its filled or empty state — the actual
   // delete doesn't reach the server until UNDO_WINDOW_MS passes with no
@@ -286,13 +360,47 @@ export function PlannerCell({
   // title with a dead gap below it, and a small "x" in the corner to
   // remove it.
   if (entry) {
+    // Can't be picked up while slots are being chosen for "Fill week
+    // with AI" (the two modes would fight over the same taps), while
+    // another meal is already mid-move, or if its recipe is gone (there's
+    // no title to say what's being moved).
+    const movable = entry.recipeId
+      ? { entryId: entry.id, dateISO, slot, title: entry.recipeTitle ?? "this meal" }
+      : null;
+    const canPickUp = movable !== null && !isSelecting && !moving;
+
     return (
       <div
-        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass} ${pastClass}`}
+        draggable={canPickUp}
+        onDragStart={(event) => {
+          if (!movable) {
+            return;
+          }
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", movable.title);
+          // Deferred a tick: startMove re-renders this very cell (the
+          // overlay appears on top of it), and changing the dragged
+          // element's DOM synchronously inside dragstart makes Chrome
+          // abort the drag before it begins.
+          setTimeout(() => startMove(movable), 0);
+        }}
+        // Fires after "drop" on a successful drop (by which point the
+        // move has already been handed off and this is a no-op), and on
+        // its own when the meal is let go anywhere that isn't a slot —
+        // which should just put it down again. Deferred for the same
+        // reason as above, so it can never run ahead of that startMove.
+        onDragEnd={() => setTimeout(cancelMove, 0)}
+        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass} ${pastClass} ${busyClass} ${
+          canPickUp ? "cursor-grab active:cursor-grabbing" : ""
+        }`}
       >
         {entry.recipeId ? (
           <Link
             href={`/recipes/${entry.recipeId}`}
+            // Links are draggable on their own by default (dragging one
+            // drags its URL) — turned off so a drag that starts on the
+            // title picks up the whole card instead.
+            draggable={false}
             className={`flex flex-1 flex-col pr-6 transition hover:brightness-110 ${textClass}`}
           >
             <span className="line-clamp-3 font-display text-sm font-semibold leading-snug">
@@ -359,6 +467,37 @@ export function PlannerCell({
         >
           &times;
         </button>
+
+        {/* The same pick-up as dragging the card, as a button — the only
+            way to move a meal on a touch screen (HTML drag-and-drop
+            doesn't exist there) or by keyboard, and what makes moving
+            possible in the one-day-at-a-time phone layout at all: press
+            it, switch day, tap the slot. Sits under the "x" in the strip
+            the title's right padding already keeps clear. */}
+        {movable && !isSelecting && (
+          <button
+            type="button"
+            onClick={() => startMove(movable)}
+            aria-label="Move this meal"
+            title="Move this meal"
+            className={`absolute right-0.5 top-8 flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-black/10 ${textClass}`}
+            style={{ opacity: 0.75 }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12,3 L12,21 M3,12 L21,12 M9,6 L12,3 L15,6 M9,18 L12,21 L15,18 M6,9 L3,12 L6,15 M18,9 L21,12 L18,15" />
+            </svg>
+          </button>
+        )}
+
+        {moveOverlay}
       </div>
     );
   }
@@ -388,7 +527,7 @@ export function PlannerCell({
             setModalOpen(true);
           }
         }}
-        className={`group relative flex ${CELL_HEIGHT} cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${pastClass} ${
+        className={`group relative flex ${CELL_HEIGHT} cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${pastClass} ${busyClass} ${
           selectedForFill
             ? "border-blueberry-400 bg-blueberry-50"
             : isSelecting
@@ -429,6 +568,8 @@ export function PlannerCell({
         >
           + Add meal
         </button>
+
+        {moveOverlay}
       </div>
 
       {modalOpen && (

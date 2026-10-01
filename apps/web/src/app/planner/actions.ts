@@ -305,3 +305,120 @@ export async function copyWeekForward(
   revalidatePath("/planner");
   return {};
 }
+
+interface MovableEntry {
+  id: string;
+  recipe_id: string;
+  plan_date: string;
+  meal_slot: MealSlot;
+  servings: number;
+}
+
+const MoveEntrySchema = z.object({
+  entryId: z.string().uuid(),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toSlot: z.enum(MEAL_SLOTS),
+});
+
+// Moves a planned meal to a different day/slot — the server-side half of
+// the planner's drag-and-drop and "Move" button (see move-meal.tsx). If
+// the destination is empty the row is simply re-dated; if it already
+// holds a meal, the two trade places.
+//
+// A swap trades the two rows' *contents* (recipe + servings) rather than
+// their positions: the (user_id, plan_date, meal_slot) unique constraint
+// means two rows can't swap dates/slots one UPDATE at a time without the
+// first one colliding with the row that's still sitting in its
+// destination. Leaving both rows where they are and exchanging what they
+// hold never trips the constraint, and looks identical on screen.
+export async function moveMealPlanEntry(
+  entryId: string,
+  toDate: string,
+  toSlot: MealSlot,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const parsed = MoveEntrySchema.safeParse({ entryId, toDate, toSlot });
+  if (!parsed.success) {
+    return { error: "Couldn't move that meal." };
+  }
+
+  // The RLS policies on meal_plan_entries already scope every query here
+  // to rows where user_id = auth.uid() — the .eq("user_id") filters are
+  // belt-and-suspenders on top of that, same as the actions above.
+  const { data: source } = await supabase
+    .from("meal_plan_entries")
+    .select("id, recipe_id, plan_date, meal_slot, servings")
+    .eq("id", parsed.data.entryId)
+    .eq("user_id", user.id)
+    .maybeSingle<MovableEntry>();
+
+  if (!source) {
+    return { error: "Couldn't move that meal." };
+  }
+  if (source.plan_date === parsed.data.toDate && source.meal_slot === parsed.data.toSlot) {
+    return {};
+  }
+
+  const { data: target, error: targetError } = await supabase
+    .from("meal_plan_entries")
+    .select("id, recipe_id, plan_date, meal_slot, servings")
+    .eq("user_id", user.id)
+    .eq("plan_date", parsed.data.toDate)
+    .eq("meal_slot", parsed.data.toSlot)
+    .maybeSingle<MovableEntry>();
+
+  if (targetError) {
+    return { error: "Couldn't move that meal." };
+  }
+
+  if (!target) {
+    const { error } = await supabase
+      .from("meal_plan_entries")
+      .update({ plan_date: parsed.data.toDate, meal_slot: parsed.data.toSlot })
+      .eq("id", source.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      return { error: "Couldn't move that meal." };
+    }
+  } else {
+    const { error: firstError } = await supabase
+      .from("meal_plan_entries")
+      .update({ recipe_id: source.recipe_id, servings: source.servings })
+      .eq("id", target.id)
+      .eq("user_id", user.id);
+
+    if (firstError) {
+      return { error: "Couldn't swap those meals." };
+    }
+
+    const { error: secondError } = await supabase
+      .from("meal_plan_entries")
+      .update({ recipe_id: target.recipe_id, servings: target.servings })
+      .eq("id", source.id)
+      .eq("user_id", user.id);
+
+    if (secondError) {
+      // Two separate UPDATEs, not one transaction — if the second half
+      // fails, put the first row back the way it was rather than leave
+      // the same meal showing in both slots (and the other one gone).
+      await supabase
+        .from("meal_plan_entries")
+        .update({ recipe_id: target.recipe_id, servings: target.servings })
+        .eq("id", target.id)
+        .eq("user_id", user.id);
+      return { error: "Couldn't swap those meals." };
+    }
+  }
+
+  revalidatePath("/planner");
+  return {};
+}

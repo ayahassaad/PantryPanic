@@ -10,6 +10,7 @@ import { PlannerCell, type PlannerEntryView, type RecipeOption } from "./planner
 import { MobileWeekView, type MobileDay } from "./mobile-week-view";
 import { FillWeekButton } from "./fill-week-button";
 import { FillWeekSelectionProvider } from "./fill-week-selection";
+import { MoveMealBanner, MoveMealProvider } from "./move-meal";
 import { RotatingTip } from "./rotating-tip";
 import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate-limit";
 
@@ -228,6 +229,10 @@ export default async function PlannerPage({
           others. See fill-week-selection.tsx for why this needs a
           context rather than props passed down one path. */}
       <FillWeekSelectionProvider weekStartISO={weekStartISO}>
+      {/* Inside the provider above, not beside it: a move in progress is
+          dropped the moment "Fill week with AI" picking starts, which
+          this one needs that one's context to know about. */}
+      <MoveMealProvider weekStartISO={weekStartISO}>
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink sm:text-4xl">
@@ -435,6 +440,8 @@ export default async function PlannerPage({
         defaultDateISO={mobileDefaultDateISO}
       />
       </div>
+      <MoveMealBanner />
+      </MoveMealProvider>
       </FillWeekSelectionProvider>
     </main>
   );
