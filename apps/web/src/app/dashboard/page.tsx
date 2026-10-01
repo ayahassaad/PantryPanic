@@ -158,12 +158,19 @@ export default async function DashboardPage() {
           : "Nothing planned for tonight yet.";
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] max-w-5xl flex-col justify-center px-6 py-8 sm:px-10">
+    // Uses the whole window rather than a narrow centered column: the
+    // same 1600px cap as the planner, and at least the full height under
+    // the nav bar. On a wide screen the greeting sits on the left with
+    // today + this week beside it, vertically centered in whatever
+    // height is left over, and the three big cards run along the bottom.
+    // Below xl it all stacks into one column in the same order.
+    <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-[1600px] flex-col gap-8 px-6 py-8 sm:px-10">
+      <div className="grid flex-1 items-center gap-8 xl:grid-cols-2 xl:gap-14">
       {/* hero */}
-      <div className="mb-8 flex flex-col items-center gap-6 text-center sm:mb-10 sm:flex-row sm:items-center sm:gap-10 sm:text-left">
-        <Mascot className="h-40 w-36 flex-none" />
+      <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:gap-10 sm:text-left">
+        <Mascot className="h-40 w-36 flex-none 2xl:h-52 2xl:w-[187px]" />
         <div>
-          <h1 className="-rotate-[0.5deg] font-display text-3xl font-bold leading-tight text-ink sm:text-5xl">
+          <h1 className="-rotate-[0.5deg] font-display text-3xl font-bold leading-tight text-ink sm:text-5xl 2xl:text-6xl">
             Hey {firstName}, what&apos;s cooking this week?
           </h1>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-soft sm:mx-0 sm:text-lg">
@@ -184,11 +191,12 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <div className="flex flex-col gap-6">
       {/* Today's three meals straight from the planner, so "what am I
           cooking today?" is answered without leaving this page. A planned
           meal links to its recipe; an empty slot links to this week's
           planner to fill it. */}
-      <section className="mb-8">
+      <section>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
           <h2 className="font-display text-2xl font-bold text-ink">Today&apos;s meals</h2>
           <p className="text-sm font-bold text-ink-soft">{todayLabel}</p>
@@ -206,7 +214,7 @@ export default async function DashboardPage() {
                 <Link
                   key={slot}
                   href={`/recipes/${entry.recipe.id}`}
-                  className={`flex min-h-[104px] flex-col rounded-[12px_15px_11px_14px] border-2 border-ink p-3 transition hover:-translate-y-0.5 hover:brightness-105 ${style.cell}`}
+                  className={`flex min-h-[104px] flex-col xl:min-h-[150px] rounded-[12px_15px_11px_14px] border-2 border-ink p-3 transition hover:-translate-y-0.5 hover:brightness-105 ${style.cell}`}
                 >
                   <span className="font-display text-xs font-semibold uppercase tracking-wide text-ink">
                     {slot}
@@ -225,7 +233,7 @@ export default async function DashboardPage() {
               <Link
                 key={slot}
                 href={`/planner?week=${todayISO}`}
-                className="group flex min-h-[104px] flex-col rounded-xl border-2 border-dashed border-ink-faint p-3 transition hover:border-ink hover:bg-cream-deep"
+                className="group flex min-h-[104px] flex-col xl:min-h-[150px] rounded-xl border-2 border-dashed border-ink-faint p-3 transition hover:border-ink hover:bg-cream-deep"
               >
                 <span
                   className={`font-display text-xs font-semibold uppercase tracking-wide ${style.label}`}
@@ -247,7 +255,7 @@ export default async function DashboardPage() {
           week's state at a glance, and one click from the planner. */}
       <Link
         href="/planner"
-        className="wobble-b mb-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-2 border-ink bg-cream-card p-5 transition hover:bg-cream-deep"
+        className="wobble-b flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-2 border-ink bg-cream-card p-5 transition hover:bg-cream-deep"
       >
         <div>
           <p className="font-display text-xs font-semibold uppercase tracking-widest text-leaf-600">
@@ -305,12 +313,14 @@ export default async function DashboardPage() {
           })}
         </div>
       </Link>
+      </div>
+      </div>
 
       {/* action cards */}
       <div className="grid gap-5 sm:grid-cols-3">
         <Link
           href="/recipes"
-          className="wobble-a hand-shadow relative -rotate-1 bg-tomato-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
+          className="wobble-a hand-shadow relative -rotate-1 bg-tomato-400 p-6 xl:p-8 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <path
@@ -336,7 +346,7 @@ export default async function DashboardPage() {
 
         <Link
           href="/planner"
-          className="wobble-b hand-shadow relative rotate-1 bg-leaf-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
+          className="wobble-b hand-shadow relative rotate-1 bg-leaf-400 p-6 xl:p-8 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <rect x="4" y="6" width="26" height="24" rx="3" fill="none" stroke="oklch(99% 0.006 85)" strokeWidth="2.5" />
@@ -360,7 +370,7 @@ export default async function DashboardPage() {
             at all. Same bag icon as its nav tab (see site-nav.tsx). */}
         <Link
           href="/shopping-list"
-          className="wobble-a hand-shadow relative -rotate-[0.6deg] bg-citrus-400 p-6 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
+          className="wobble-a hand-shadow relative -rotate-[0.6deg] bg-citrus-400 p-6 xl:p-8 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
         >
           <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
             <path
