@@ -160,6 +160,12 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
   // `recipes` directly — same reasoning as favoritedIds: React state, not
   // a mutation of the prop array.
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  // The one tag the grid is narrowed to, if any — picked from the row of
+  // tag chips above the grid. One at a time (clicking another swaps it,
+  // clicking the active one clears it) rather than a multi-select: with a
+  // personal recipe box's worth of tags, "show me the vegetarian ones" is
+  // the whole use case.
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   function handleToggle(recipeId: string, isFavorited: boolean) {
@@ -209,9 +215,27 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
   // A recipe you favorite still shows up in "All" — favoriting just also
   // puts a copy of it under "Favorites", it never moves it out of the
   // main list.
-  const displayedRecipes = (
-    tab === "favorites" ? recipes.filter((recipe) => favoritedIds.has(recipe.id)) : recipes
-  ).filter((recipe) => !deletedIds.has(recipe.id));
+  const visibleRecipes = recipes.filter((recipe) => !deletedIds.has(recipe.id));
+  const tabRecipes =
+    tab === "favorites"
+      ? visibleRecipes.filter((recipe) => favoritedIds.has(recipe.id))
+      : visibleRecipes;
+  const displayedRecipes = activeTag
+    ? tabRecipes.filter((recipe) => recipe.tags.includes(activeTag))
+    : tabRecipes;
+
+  // Every tag in use, most-used first (ties alphabetical) — built from
+  // the whole recipe box rather than the current tab, so the row of chips
+  // doesn't reshuffle when switching between All and Favorites.
+  const tagCounts = new Map<string, number>();
+  for (const recipe of visibleRecipes) {
+    for (const tag of recipe.tags) {
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+    }
+  }
+  const allTags = [...tagCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([tag]) => tag);
 
   return (
     <>
@@ -240,11 +264,34 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
         </button>
       </div>
 
-      {displayedRecipes.length === 0 && (tab === "favorites" || query) && (
+      {allTags.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-xs font-extrabold uppercase tracking-wide text-ink-soft">
+            Tags
+          </span>
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              aria-pressed={activeTag === tag}
+              className={`rounded-full border-2 border-ink px-2.5 py-0.5 text-xs font-extrabold transition ${
+                activeTag === tag ? "bg-leaf-400 text-ink" : "bg-cream-deep text-ink hover:bg-cream"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {displayedRecipes.length === 0 && (tab === "favorites" || query || activeTag) && (
         <p className="text-ink-soft">
-          {tab === "favorites"
-            ? "No favorites yet — tap the star on a recipe to add it here."
-            : `No recipes match "${query}".`}
+          {activeTag
+            ? `No ${tab === "favorites" ? "favorites" : "recipes"} tagged "${activeTag}".`
+            : tab === "favorites"
+              ? "No favorites yet — tap the star on a recipe to add it here."
+              : `No recipes match "${query}".`}
         </p>
       )}
 
@@ -256,7 +303,7 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
           buttons at the top of the page already do the same thing — this
           just repeats them where the eye actually lands when the grid
           below is empty. */}
-      {displayedRecipes.length === 0 && tab === "all" && !query && (
+      {displayedRecipes.length === 0 && tab === "all" && !query && !activeTag && (
         <div className="wobble-a hand-shadow flex flex-col items-center gap-4 border-2 border-ink bg-cream-card px-6 py-12 text-center">
           <Mascot className="h-20 w-[70px]" />
           <div>
@@ -412,6 +459,26 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, query, 
                 )}
                 {recipe.description && (
                   <p className="mt-1 text-sm text-ink-soft">{recipe.description}</p>
+                )}
+                {/* First few tags only — a card is a preview; the full
+                    set is on the recipe's own page. Same chip style as
+                    there. */}
+                {recipe.tags.length > 0 && (
+                  <ul className="mt-2 flex flex-wrap gap-1">
+                    {recipe.tags.slice(0, 3).map((tag) => (
+                      <li
+                        key={tag}
+                        className="rounded-full border-2 border-ink bg-cream-deep px-2 py-0.5 text-[11px] font-extrabold text-ink"
+                      >
+                        {tag}
+                      </li>
+                    ))}
+                    {recipe.tags.length > 3 && (
+                      <li className="px-1 py-0.5 text-[11px] font-extrabold text-ink-soft">
+                        +{recipe.tags.length - 3}
+                      </li>
+                    )}
+                  </ul>
                 )}
               </div>
             </li>
