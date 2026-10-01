@@ -63,14 +63,38 @@ export function MobileWeekView({
             <span className="text-[10px] font-extrabold uppercase tracking-wide">
               {d.dayLabel}
             </span>
-            <span className="font-display text-sm font-bold">{d.dayNumber}</span>
-            {d.isToday && (
-              <span
-                className={`h-1 w-1 rounded-full ${
-                  d.dateISO === day?.dateISO ? "bg-cream" : "bg-tomato-400"
-                }`}
-              />
-            )}
+            {/* Today gets the same citrus circle around its date as the
+                desktop grid's header — it used to be a small dot under
+                the number, which would now be lost among the meal dots
+                below. */}
+            <span
+              className={`inline-flex h-6 w-6 items-center justify-center font-display text-sm font-bold ${
+                d.isToday ? "rounded-full bg-citrus-400 text-ink" : ""
+              }`}
+            >
+              {d.dayNumber}
+            </span>
+            {/* One dot per meal slot, filled in that slot's color once
+                something's planned there — with only one day on screen
+                at a time, this is the only way to see which other days
+                still need planning without tapping through all seven. */}
+            <span className="flex gap-1">
+              {slotOrder.map((slot) => (
+                <span
+                  key={slot}
+                  className={`h-2 w-2 rounded-full border ${
+                    d.entries[slot]
+                      ? `border-ink ${slotStyles[slot].cell}`
+                      : d.dateISO === day?.dateISO
+                        ? "border-cream/70"
+                        : "border-ink-faint"
+                  }`}
+                />
+              ))}
+            </span>
+            <span className="sr-only">
+              {slotOrder.filter((slot) => d.entries[slot]).length} of {slotOrder.length} meals planned
+            </span>
           </button>
         ))}
       </div>
