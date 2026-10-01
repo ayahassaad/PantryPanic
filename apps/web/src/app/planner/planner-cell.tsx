@@ -363,26 +363,31 @@ export function PlannerCell({
   // tab when there's a library to search, otherwise straight to "new"
   // since there's nothing to pick from yet.
   //
-  // The rest of the box (anywhere but that button) doubles as a toggle
-  // for "Fill week with AI" — but only once picking mode is on
-  // (isSelecting, turned on by pressing that button — see
-  // fill-week-selection.tsx). Until then this click does nothing, same
-  // as the plain dashed box before this feature existed; toggle() itself
-  // also no-ops while not selecting, so this is a style-only gate, not
-  // the only thing preventing an accidental pick. The "+ Add meal"
-  // button stops its own click from bubbling up so opening the modal and
-  // toggling selection stay two separate gestures instead of both firing
-  // at once.
+  // The whole box is the click target, not just the small button in its
+  // middle: normally a click anywhere on it opens the same modal, and
+  // once picking mode for "Fill week with AI" is on (isSelecting, turned
+  // on by pressing that button — see fill-week-selection.tsx) it toggles
+  // this slot's selection instead. The "+ Add meal" button stays a real
+  // <button> (it's what keyboard and screen-reader users reach — the box
+  // around it is a mouse/touch convenience only) and stops its own click
+  // from bubbling up, so the box's handler never fires a second time on
+  // top of it.
   return (
     <>
       <div
-        onClick={() => toggleFillSelection(dateISO, slot)}
-        className={`relative flex ${CELL_HEIGHT} items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${pastClass} ${
+        onClick={() => {
+          if (isSelecting) {
+            toggleFillSelection(dateISO, slot);
+          } else {
+            setModalOpen(true);
+          }
+        }}
+        className={`group relative flex ${CELL_HEIGHT} cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 p-2.5 transition ${pastClass} ${
           selectedForFill
-            ? "cursor-pointer border-blueberry-400 bg-blueberry-50"
+            ? "border-blueberry-400 bg-blueberry-50"
             : isSelecting
-              ? "cursor-pointer border-dashed border-blueberry-400/40 hover:border-blueberry-400 hover:bg-blueberry-50"
-              : "border-dashed border-ink-faint"
+              ? "border-dashed border-blueberry-400/40 hover:border-blueberry-400 hover:bg-blueberry-50"
+              : "border-dashed border-ink-faint hover:border-ink hover:bg-cream-deep"
         }`}
       >
         {selectedForFill && (
@@ -412,8 +417,8 @@ export function PlannerCell({
           // tapping anywhere on the cell (including right on top of
           // "+ Add meal") always just selects it, the same as tapping
           // any other empty spot in the box.
-          className={`wobble-btn relative z-10 border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition hover:border-ink hover:bg-cream-deep hover:text-ink ${
-            isSelecting ? "pointer-events-none opacity-50" : ""
+          className={`wobble-btn relative z-10 border-2 border-ink-faint bg-cream-card px-4 py-2 font-display text-sm font-semibold text-ink-soft transition ${
+            isSelecting ? "pointer-events-none opacity-50" : "group-hover:border-ink group-hover:text-ink"
           }`}
         >
           + Add meal
