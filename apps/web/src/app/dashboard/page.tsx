@@ -141,6 +141,19 @@ export default async function DashboardPage() {
   const totalSlots = weekDays.length * MEAL_SLOTS.length;
   const filledSlots = weekEntries?.length ?? 0;
 
+  // The line under the greeting says where the week actually stands,
+  // instead of the same pitch on every visit. The original pitch is kept
+  // for the one case it still fits: nothing planned at all yet.
+  const tonight = todayBySlot.get("dinner")?.recipe?.title ?? null;
+  const heroLine =
+    filledSlots === totalSlots
+      ? `Your whole week is planned. Tonight: ${tonight ?? "dinner's sorted"}.`
+      : tonight
+        ? `Tonight: ${tonight}.`
+        : filledSlots === 0
+          ? "Plan your dinners, wrangle a shopping list, and never stand in front of the fridge wondering again."
+          : "Nothing planned for tonight yet.";
+
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] max-w-5xl flex-col justify-center px-6 py-8 sm:px-10">
       {/* hero */}
@@ -151,8 +164,7 @@ export default async function DashboardPage() {
             Hey {firstName}, what&apos;s cooking this week?
           </h1>
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-soft sm:mx-0 sm:text-lg">
-            Plan your dinners, wrangle a shopping list, and never stand in
-            front of the fridge wondering again.
+            {heroLine}
           </p>
         </div>
       </div>
