@@ -15,6 +15,12 @@ import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// "Sep 28" — same fixed en-US locale and UTC timezone as the shopping
+// list's "Week of …" heading, so the two pages always name the same day.
+function formatShortDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 // The two circular week-switch buttons flanking the schedule — a single
 // chevron path, mirrored via scaleX for "next" rather than keeping two
 // near-duplicate paths around.
@@ -119,6 +125,7 @@ export default async function PlannerPage({
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekStartISO = toISODate(weekStart);
   const weekEndISO = toISODate(addDays(weekStart, 6));
+  const weekRangeLabel = `${formatShortDate(weekStart)} – ${formatShortDate(addDays(weekStart, 6))}`;
   const prevWeekISO = toISODate(addDays(weekStart, -7));
   const nextWeekISO = toISODate(addDays(weekStart, 7));
   const todayISO = toISODate(new Date());
@@ -225,6 +232,9 @@ export default async function PlannerPage({
           <h1 className="-rotate-[0.4deg] font-display text-3xl font-bold text-ink sm:text-4xl">
             Week {weekNumber}
           </h1>
+          {/* "Week 40" alone doesn't say which dates that is — especially
+              after paging a few weeks away with the arrows. */}
+          <p className="mt-1 font-display text-base font-semibold text-ink">{weekRangeLabel}</p>
           <p className="mt-1 text-sm font-bold text-ink-soft">
             {filledSlots} of {totalSlots} meals planned
           </p>
