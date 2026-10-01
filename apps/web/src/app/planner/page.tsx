@@ -238,6 +238,18 @@ export default async function PlannerPage({
           <p className="mt-1 text-sm font-bold text-ink-soft">
             {filledSlots} of {totalSlots} meals planned
           </p>
+          {/* The same count as the line above, as a bar — readable at a
+              glance without doing "12 of 21" in your head. Decorative
+              only (aria-hidden): the sentence above already says it. */}
+          <div
+            aria-hidden
+            className="mt-1.5 h-2.5 w-44 overflow-hidden rounded-full border-2 border-ink bg-cream-card"
+          >
+            <div
+              className="h-full rounded-full bg-leaf-400 transition-[width] duration-300"
+              style={{ width: `${Math.round((filledSlots / totalSlots) * 100)}%` }}
+            />
+          </div>
         </div>
 
         {/* Moved up from below the grid so it sits between the week
