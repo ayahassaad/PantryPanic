@@ -134,6 +134,14 @@ function cardDoodles(cardIndex: number): CardDoodle[] {
   return doodles;
 }
 
+type SortOrder = "newest" | "az" | "favorites";
+
+const SORT_LABELS: Record<SortOrder, string> = {
+  newest: "Newest first",
+  az: "A to Z",
+  favorites: "Favorites first",
+};
+
 interface RecipeGridProps {
   recipes: RecipeListItem[];
   favoritedIds: string[];
@@ -174,6 +182,7 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, initial
   // personal recipe box's worth of tags, "show me the vegetarian ones" is
   // the whole use case.
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [, startTransition] = useTransition();
 
   function handleToggle(recipeId: string, isFavorited: boolean) {
@@ -235,13 +244,25 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, initial
   // make with the chicken I've got" is as common a question as "where's
   // that curry" — using the ingredient names the page already loads for
   // the no-photo placeholder.
-  const displayedRecipes = query
+  const matchingRecipes = query
     ? taggedRecipes.filter(
         (recipe) =>
           recipe.title.toLowerCase().includes(query) ||
           recipe.ingredientNames.some((name) => name.toLowerCase().includes(query)),
       )
     : taggedRecipes;
+  // "Newest first" is simply the order the server query already returns
+  // (created_at descending), so it needs no sorting here. The other two
+  // sort a copy — Array#sort is stable, so within "favorites first" each
+  // group keeps that newest-first order.
+  const displayedRecipes =
+    sortOrder === "az"
+      ? [...matchingRecipes].sort((a, b) => a.title.localeCompare(b.title))
+      : sortOrder === "favorites"
+        ? [...matchingRecipes].sort(
+            (a, b) => Number(favoritedIds.has(b.id)) - Number(favoritedIds.has(a.id)),
+          )
+        : matchingRecipes;
 
   // Every tag in use, most-used first (ties alphabetical) — built from
   // the whole recipe box rather than the current tab, so the row of chips
@@ -278,7 +299,7 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, initial
         )}
       </div>
 
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setTab("all")}
@@ -301,6 +322,20 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, initial
         >
           ★ Favorites
         </button>
+        <label className="ml-auto flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-ink-soft">
+          Sort
+          <select
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value as SortOrder)}
+            className="rounded-xl border-2 border-ink bg-cream-card px-3 py-1.5 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-tomato-400"
+          >
+            {(Object.keys(SORT_LABELS) as SortOrder[]).map((order) => (
+              <option key={order} value={order}>
+                {SORT_LABELS[order]}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {allTags.length > 0 && (
