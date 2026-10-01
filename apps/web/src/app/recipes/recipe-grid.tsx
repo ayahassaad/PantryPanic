@@ -17,6 +17,7 @@ import {
   DoodlePepper,
 } from "@/components/food-doodles";
 import { deleteRecipeCard, toggleFavorite } from "./actions";
+import { AddToPlannerButton } from "./add-to-planner-button";
 
 export interface RecipeListItem {
   id: string;
@@ -516,23 +517,30 @@ export function RecipeGrid({ recipes, favoritedIds: initialFavoritedIds, initial
                     />
                   </div>
                 </div>
-                {recipe.isOwner && (
-                  <div className="relative z-10 mt-1 flex w-fit items-center gap-3">
-                    <Link
-                      href={`/recipes/${recipe.id}/edit`}
-                      className="text-xs font-bold text-ink-soft underline underline-offset-2 transition hover:text-ink"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(recipe.id)}
-                      className="text-xs font-bold text-ink-faint underline underline-offset-2 transition hover:text-tomato-600"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
+                <div className="relative z-10 mt-1 flex w-fit flex-wrap items-center gap-x-3 gap-y-1">
+                  <AddToPlannerButton
+                    recipeId={recipe.id}
+                    recipeTitle={recipe.title}
+                    variant="card"
+                  />
+                  {recipe.isOwner && (
+                    <>
+                      <Link
+                        href={`/recipes/${recipe.id}/edit`}
+                        className="text-xs font-bold text-ink-soft underline underline-offset-2 transition hover:text-ink"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(recipe.id)}
+                        className="text-xs font-bold text-ink-faint underline underline-offset-2 transition hover:text-tomato-600"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
                 {recipe.description && (
                   <p className="mt-1 text-sm text-ink-soft">{recipe.description}</p>
                 )}

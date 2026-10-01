@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { createClient } from "@/lib/supabase/server";
+import { assignMealPlanEntry } from "@/app/planner/actions";
 
 // Called directly from the FavoriteButton client component (not as a
 // <form action>), so it takes plain arguments instead of FormData — that
@@ -102,4 +105,71 @@ export async function deleteRecipe(recipeId: string) {
   }
 
   redirect("/recipes");
+}
+
+const AddToPlannerSchema = z.object({
+  recipeId: z.string().uuid(),
+  planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  mealSlot: z.enum(MEAL_SLOTS),
+});
+
+// Called from AddToPlannerButton (a recipe card, or the recipe's own
+// page) to put a recipe into a day's meal slot. The actual write is the
+// planner's own assignMealPlanEntry — same validation, same "servings
+// start at the household size" default — so a meal added from here is
+// indistinguishable from one picked in the planner.
+//
+// The one thing added on top: assignMealPlanEntry upserts, i.e. quietly
+// replaces whatever's already in the slot. That's fine in the planner,
+// where you're looking straight at the slot you're replacing; from a
+// recipe page you can't see the week at all, so unless `replace` is set
+// an occupied slot is reported back (conflictTitle) instead of
+// overwritten, and the dialog asks first.
+export async function addRecipeToPlanner(
+  recipeId: string,
+  planDate: string,
+  mealSlot: MealSlot,
+  replace: boolean,
+): Promise<{ error?: string; conflictTitle?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const parsed = AddToPlannerSchema.safeParse({ recipeId, planDate, mealSlot });
+  if (!parsed.success) {
+    return { error: "Couldn't add that to the planner." };
+  }
+
+  if (!replace) {
+    const { data: existing, error: existingError } = await supabase
+      .from("meal_plan_entries")
+      .select("id, recipe:recipes(title)")
+      .eq("user_id", user.id)
+      .eq("plan_date", parsed.data.planDate)
+      .eq("meal_slot", parsed.data.mealSlot)
+      .maybeSingle<{ id: string; recipe: { title: string } | null }>();
+
+    if (existingError) {
+      return { error: "Couldn't add that to the planner." };
+    }
+    if (existing) {
+      return { conflictTitle: existing.recipe?.title ?? "another meal" };
+    }
+  }
+
+  const result = await assignMealPlanEntry(
+    parsed.data.recipeId,
+    parsed.data.planDate,
+    parsed.data.mealSlot,
+  );
+  if (!result.entryId) {
+    return { error: "Couldn't add that to the planner." };
+  }
+
+  return {};
 }

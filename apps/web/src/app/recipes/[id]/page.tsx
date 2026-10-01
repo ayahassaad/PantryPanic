@@ -5,6 +5,7 @@ import { Mascot } from "@/components/mascot";
 import { FavoriteButton } from "@/components/favorite-button";
 import { toggleFavorite, deleteRecipe } from "../actions";
 import { DeleteRecipeButton } from "./delete-recipe-button";
+import { AddToPlannerButton } from "../add-to-planner-button";
 
 interface RecipeDetail {
   id: string;
@@ -111,17 +112,20 @@ export default async function RecipeDetailPage({
         />
       </div>
 
-      {isOwner && (
-        <div className="mb-4 flex items-center gap-4">
-          <Link
-            href={`/recipes/${recipe.id}/edit`}
-            className="border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
-          >
-            Edit
-          </Link>
-          <DeleteRecipeButton recipeId={recipe.id} deleteRecipe={deleteRecipe} />
-        </div>
-      )}
+      <div className="mb-4 mt-2 flex flex-wrap items-center gap-4">
+        <AddToPlannerButton recipeId={recipe.id} recipeTitle={recipe.title} variant="page" />
+        {isOwner && (
+          <>
+            <Link
+              href={`/recipes/${recipe.id}/edit`}
+              className="border-b-2 border-dashed border-ink-soft text-sm font-bold text-ink-soft transition hover:text-ink"
+            >
+              Edit
+            </Link>
+            <DeleteRecipeButton recipeId={recipe.id} deleteRecipe={deleteRecipe} />
+          </>
+        )}
+      </div>
 
       {recipe.description && (
         <p className="mb-4 text-base text-ink-soft">{recipe.description}</p>
