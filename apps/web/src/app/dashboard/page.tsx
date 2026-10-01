@@ -166,6 +166,18 @@ export default async function DashboardPage() {
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-soft sm:mx-0 sm:text-lg">
             {heroLine}
           </p>
+          {/* Only while tonight's dinner slot is still empty — a shortcut
+              into the existing "Ask AI" form with Dinner already picked
+              (see the `meal` param in recipes/suggest/page.tsx). Same
+              button style as "Suggest with AI" on the recipes page. */}
+          {!todayBySlot.has("dinner") && (
+            <Link
+              href="/recipes/suggest?meal=dinner"
+              className="wobble-btn hand-shadow mt-5 inline-block bg-citrus-400 px-5 py-2.5 font-display text-sm font-semibold text-ink transition hover:brightness-105"
+            >
+              &#10022; Suggest tonight&apos;s dinner
+            </Link>
+          )}
         </div>
       </div>
 

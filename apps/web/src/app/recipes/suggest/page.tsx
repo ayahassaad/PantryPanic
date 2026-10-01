@@ -9,7 +9,7 @@ import { AI_RATE_LIMIT_MAX_REQUESTS, countRecentAiRequests } from "@/lib/ai-rate
 export default async function SuggestRecipePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; meal?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -20,7 +20,12 @@ export default async function SuggestRecipePage({
     redirect("/login");
   }
 
-  const { error } = await searchParams;
+  const { error, meal } = await searchParams;
+
+  // Lets a link pre-pick the Meal dropdown (the dashboard's "Suggest
+  // tonight's dinner" button sends ?meal=dinner). Anything that isn't one
+  // of the real slots just falls back to "Any".
+  const defaultMealSlot = MEAL_SLOTS.find((slot) => slot === meal) ?? "";
 
   // Same shared daily counter "Fill week with AI" draws from — see
   // lib/ai-rate-limit.ts — so this reflects however many of the two
@@ -75,7 +80,7 @@ export default async function SuggestRecipePage({
           Meal
           <select
             name="mealSlot"
-            defaultValue=""
+            defaultValue={defaultMealSlot}
             className="rounded-xl border-2 border-ink bg-cream-card px-4 py-2.5 text-base text-ink outline-none focus:border-blueberry-400"
           >
             <option value="">Any</option>
