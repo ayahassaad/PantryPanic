@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -23,6 +24,52 @@ interface PlanEntry {
   meal_slot: MealSlot;
   servings: number;
   recipe: { id: string; title: string } | null;
+}
+
+// How many items are on this week's shopping list, and how many are
+// still unticked — the one line of text on the "Shopping list" card. The
+// list is only ever rebuilt from the planner when something asks it to
+// (see syncShoppingListFromPlanner), so it's synced here first, exactly
+// as the shopping list page does on every visit — otherwise a meal added
+// since that page was last opened wouldn't be counted, and this card
+// would show a number the list itself then contradicts.
+//
+// Its own async component (rendered inside a <Suspense>) rather than
+// part of DashboardPage's own data loading: that sync is several
+// database round trips, and nothing else on the page needs its result.
+async function ShoppingSummary({ userId, weekStartISO }: { userId: string; weekStartISO: string }) {
+  const supabase = await createClient();
+  await syncShoppingListFromPlanner(supabase, userId, weekStartISO);
+
+  const { data: list } = await supabase
+    .from("shopping_lists")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("week_start_date", weekStartISO)
+    .maybeSingle<{ id: string }>();
+
+  const { data: items } = list
+    ? await supabase
+        .from("shopping_list_items")
+        .select("is_checked")
+        .eq("shopping_list_id", list.id)
+        .returns<Array<{ is_checked: boolean }>>()
+    : { data: null };
+
+  const total = items?.length ?? 0;
+  const left = (items ?? []).filter((item) => !item.is_checked).length;
+
+  if (total === 0) {
+    return <>Fills itself from your meal plan</>;
+  }
+  if (left === 0) {
+    return <>All {total} items ticked off this week</>;
+  }
+  return (
+    <>
+      {left} {left === 1 ? "item" : "items"} left to buy this week
+    </>
+  );
 }
 
 export default async function DashboardPage() {
@@ -77,57 +124,13 @@ export default async function DashboardPage() {
 
   const weekStartISO = toISODate(weekStart);
 
-  // How many items are on this week's shopping list, and how many are
-  // still unticked. The list is only ever rebuilt from the planner when
-  // something asks it to (see syncShoppingListFromPlanner), so it's
-  // synced here first, exactly as the shopping list page does on every
-  // visit — otherwise a meal added since that page was last opened
-  // wouldn't be counted, and this card would show a number the list
-  // itself then contradicts.
-  async function countShoppingItems(userId: string): Promise<{ total: number; left: number }> {
-    await syncShoppingListFromPlanner(supabase, userId, weekStartISO);
-
-    const { data: list } = await supabase
-      .from("shopping_lists")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("week_start_date", weekStartISO)
-      .maybeSingle<{ id: string }>();
-    if (!list) {
-      return { total: 0, left: 0 };
-    }
-
-    const { data: items } = await supabase
-      .from("shopping_list_items")
-      .select("is_checked")
-      .eq("shopping_list_id", list.id)
-      .returns<Array<{ is_checked: boolean }>>();
-
-    return {
-      total: items?.length ?? 0,
-      left: (items ?? []).filter((item) => !item.is_checked).length,
-    };
-  }
-
-  // Side by side rather than one after the other — neither needs the
-  // other's result.
-  const [{ data: weekEntries }, shopping] = await Promise.all([
-    supabase
-      .from("meal_plan_entries")
-      .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
-      .eq("user_id", user.id)
-      .gte("plan_date", weekStartISO)
-      .lte("plan_date", toISODate(addDays(weekStart, 6)))
-      .returns<PlanEntry[]>(),
-    countShoppingItems(user.id),
-  ]);
-
-  const shoppingSummary =
-    shopping.total === 0
-      ? "Fills itself from your meal plan"
-      : shopping.left === 0
-        ? `All ${shopping.total} items ticked off this week`
-        : `${shopping.left} ${shopping.left === 1 ? "item" : "items"} left to buy this week`;
+  const { data: weekEntries } = await supabase
+    .from("meal_plan_entries")
+    .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
+    .eq("user_id", user.id)
+    .gte("plan_date", weekStartISO)
+    .lte("plan_date", toISODate(addDays(weekStart, 6)))
+    .returns<PlanEntry[]>();
 
   const todayBySlot = new Map<MealSlot, PlanEntry>();
   const plannedCells = new Set<string>();
@@ -376,7 +379,15 @@ export default async function DashboardPage() {
             />
           </svg>
           <p className="font-display text-xl font-semibold text-ink">Shopping list</p>
-          <p className="mt-1 text-sm text-ink-soft">{shoppingSummary}</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {/* The count needs the list re-synced first (see
+                ShoppingSummary above), which is by far the slowest thing
+                on this page — so it streams in on its own once it's
+                ready, instead of the whole dashboard waiting on it. */}
+            <Suspense fallback="Checking this week's list…">
+              <ShoppingSummary userId={user.id} weekStartISO={weekStartISO} />
+            </Suspense>
+          </p>
         </Link>
       </div>
     </main>
