@@ -38,6 +38,13 @@ body {
 .hand-shadow {
   box-shadow: 5px 5px 0 var(--foreground);
 }
+/* A highlighter-pen stroke (the active tab in the desktop nav bar): the
+   uneven corners and slight tilt/slant are what make a flat block of
+   color read as a swipe of a marker rather than a plain rectangle. */
+.marker-swipe {
+  border-radius: 3px 9px 4px 10px / 7px 3px 8px 4px;
+  transform: rotate(-1.5deg) skewX(-12deg);
+}
 /* Colored variants, used where a card/button sits on the plain cream
    background and a colored offset shadow reads better than an ink one
    (recipe cards cycling through the accent palette, etc). */

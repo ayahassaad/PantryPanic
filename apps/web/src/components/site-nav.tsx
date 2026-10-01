@@ -153,14 +153,23 @@ export function SiteNav({ children, isAdmin = false }: { children: ReactNode; is
                   <Link
                     key={href}
                     href={href}
-                    className={`flex items-center gap-1.5 rounded-full border-2 px-3.5 py-1.5 text-sm font-bold transition ${
-                      active
-                        ? "border-ink bg-tomato-400 text-cream"
-                        : "border-transparent text-ink-soft hover:border-ink-faint hover:text-ink"
+                    className={`flex items-center gap-1.5 rounded-full border-2 border-transparent px-3.5 py-1.5 text-sm font-bold transition ${
+                      active ? "text-ink" : "text-ink-soft hover:border-ink-faint hover:text-ink"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {label}
+                    {/* isolate: gives the label its own stacking context,
+                        so the -z-10 marker stroke sits behind the text but
+                        never slips behind the header's own background. */}
+                    <span className="relative isolate">
+                      {active && (
+                        <span
+                          aria-hidden
+                          className="marker-swipe absolute -inset-x-1.5 bottom-0 top-[35%] -z-10 bg-citrus-400"
+                        />
+                      )}
+                      {label}
+                    </span>
                   </Link>
                 );
               })}
