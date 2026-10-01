@@ -1,7 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
+import { toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
+
+// Same accent per meal slot as the planner grid (breakfast = citrus,
+// lunch = leaf, dinner = tomato), so a meal looks the same here as it
+// does on the page it was planned on.
+const SLOT_STYLES: Record<MealSlot, { label: string; cell: string }> = {
+  breakfast: { label: "text-citrus-600", cell: "bg-citrus-400" },
+  lunch: { label: "text-leaf-600", cell: "bg-leaf-400" },
+  dinner: { label: "text-tomato-600", cell: "bg-tomato-400" },
+};
+
+interface PlanEntry {
+  id: string;
+  plan_date: string;
+  meal_slot: MealSlot;
+  servings: number;
+  recipe: { id: string; title: string } | null;
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -36,10 +55,33 @@ export default async function DashboardPage() {
 
   const firstName = (profile?.full_name?.trim().split(" ")[0] || user.email?.split("@")[0]) ?? "there";
 
+  // "Today" is the UTC date, same as the planner's own today marker (see
+  // planner/page.tsx) — the two pages have to agree on which day it is.
+  const today = new Date();
+  const todayISO = toISODate(today);
+  const todayLabel = today.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+  const { data: todayEntries } = await supabase
+    .from("meal_plan_entries")
+    .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
+    .eq("user_id", user.id)
+    .eq("plan_date", todayISO)
+    .returns<PlanEntry[]>();
+
+  const todayBySlot = new Map<MealSlot, PlanEntry>();
+  for (const entry of todayEntries ?? []) {
+    todayBySlot.set(entry.meal_slot, entry);
+  }
+
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] max-w-5xl flex-col justify-center px-6 py-8 sm:px-10">
       {/* hero */}
-      <div className="mb-10 flex flex-col items-center gap-6 text-center sm:mb-14 sm:flex-row sm:items-center sm:gap-10 sm:text-left">
+      <div className="mb-8 flex flex-col items-center gap-6 text-center sm:mb-10 sm:flex-row sm:items-center sm:gap-10 sm:text-left">
         <Mascot className="h-40 w-36 flex-none" />
         <div>
           <h1 className="-rotate-[0.5deg] font-display text-3xl font-bold leading-tight text-ink sm:text-5xl">
@@ -51,6 +93,63 @@ export default async function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Today's three meals straight from the planner, so "what am I
+          cooking today?" is answered without leaving this page. A planned
+          meal links to its recipe; an empty slot links to this week's
+          planner to fill it. */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
+          <h2 className="font-display text-2xl font-bold text-ink">Today&apos;s meals</h2>
+          <p className="text-sm font-bold text-ink-soft">{todayLabel}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {MEAL_SLOTS.map((slot) => {
+            const entry = todayBySlot.get(slot);
+            const style = SLOT_STYLES[slot];
+
+            // entry.recipe is null if the recipe isn't visible to this
+            // user any more — nothing to link to, so it's shown as an
+            // empty slot rather than a card with no title.
+            if (entry?.recipe) {
+              return (
+                <Link
+                  key={slot}
+                  href={`/recipes/${entry.recipe.id}`}
+                  className={`flex min-h-[104px] flex-col rounded-[12px_15px_11px_14px] border-2 border-ink p-3 transition hover:-translate-y-0.5 hover:brightness-105 ${style.cell}`}
+                >
+                  <span className="font-display text-xs font-semibold uppercase tracking-wide text-ink">
+                    {slot}
+                  </span>
+                  <span className="mt-1 line-clamp-2 font-display text-lg font-semibold leading-snug text-ink">
+                    {entry.recipe.title}
+                  </span>
+                  <span className="mt-auto pt-1 text-xs font-bold text-ink">
+                    {entry.servings} {entry.servings === 1 ? "serving" : "servings"}
+                  </span>
+                </Link>
+              );
+            }
+
+            return (
+              <Link
+                key={slot}
+                href={`/planner?week=${todayISO}`}
+                className="group flex min-h-[104px] flex-col rounded-xl border-2 border-dashed border-ink-faint p-3 transition hover:border-ink hover:bg-cream-deep"
+              >
+                <span
+                  className={`font-display text-xs font-semibold uppercase tracking-wide ${style.label}`}
+                >
+                  {slot}
+                </span>
+                <span className="mt-1 font-display text-lg font-semibold text-ink-soft transition group-hover:text-ink">
+                  + Add meal
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       {/* action cards */}
       <div className="grid gap-5 sm:grid-cols-3">
