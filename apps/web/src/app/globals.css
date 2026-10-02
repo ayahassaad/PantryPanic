@@ -64,6 +64,40 @@ body {
   box-shadow: 5px 5px 0 oklch(65% 0.13 290);
 }
 
+/* The home page's fridge door (see app/dashboard/page.tsx). The cool
+   blue-grey of the appliance is deliberately outside the fruit palette —
+   it's the one surface in the app that isn't cream — so it lives here
+   rather than as a Tailwind color anything else might start using. */
+.fridge-freezer {
+  background: linear-gradient(180deg, oklch(95% 0.02 200), oklch(93% 0.025 200));
+}
+.fridge-door {
+  background: linear-gradient(180deg, oklch(93% 0.025 200), oklch(88% 0.03 200));
+}
+.fridge-handle {
+  width: 18px;
+  border: 3px solid var(--foreground);
+  border-radius: 10px;
+  background: oklch(84% 0.02 200);
+  box-shadow: 3px 3px 0 rgb(0 0 0 / 0.15);
+}
+/* Softer than .hand-shadow's solid ink: a piece of paper stuck to the
+   door, not a sticker. */
+.paper-shadow {
+  box-shadow: 5px 6px 0 rgb(0 0 0 / 0.18);
+}
+/* Ruled lines for the shopping notepad, spaced to match its 38.5px-tall
+   rows. The 72px offset is the pad's top padding (32) + its heading
+   (28) + the heading's bottom margin (12), so each line lands along the
+   bottom of a row. */
+.notepad-lines {
+  background-image: repeating-linear-gradient(
+    transparent 0 37px,
+    oklch(88% 0.04 235) 37px 38.5px
+  );
+  background-position: 0 72px;
+}
+
 /* A small idle rotation for the mascot on quieter pages (login, etc.) —
    just enough to feel alive without being distracting. Respects
    prefers-reduced-motion since it's purely decorative. */

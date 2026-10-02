@@ -6,38 +6,64 @@ import { MEAL_SLOTS, type MealSlot } from "@pantry-panic/shared";
 import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
 import { syncShoppingListFromPlanner } from "@/app/shopping-list/actions";
+import { RecipeFoodMascot } from "@/app/recipes/[id]/recipe-food-mascot";
 
 // Same accent per meal slot as the planner grid (breakfast = citrus,
-// lunch = leaf, dinner = tomato), so a meal looks the same here as it
-// does on the page it was planned on.
-const SLOT_STYLES: Record<MealSlot, { label: string; cell: string }> = {
-  breakfast: { label: "text-citrus-600", cell: "bg-citrus-400" },
-  lunch: { label: "text-leaf-600", cell: "bg-leaf-400" },
-  dinner: { label: "text-tomato-600", cell: "bg-tomato-400" },
+// lunch = leaf, dinner = tomato), so a meal's dot here matches its cell
+// on the page it was planned on.
+const SLOT_DOT: Record<MealSlot, string> = {
+  breakfast: "bg-citrus-400",
+  lunch: "bg-leaf-400",
+  dinner: "bg-tomato-400",
 };
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Purely decorative alphabet magnets in the freezer drawer.
+const LETTER_MAGNETS = [
+  { letter: "Y", className: "bg-tomato-400 -rotate-[8deg]" },
+  { letter: "U", className: "bg-leaf-400 rotate-[5deg] translate-y-1" },
+  { letter: "M", className: "bg-blueberry-400 -rotate-[3deg] -translate-y-0.5" },
+  { letter: "!", className: "bg-carrot-400 rotate-[9deg] translate-y-0.5" },
+];
+
+// The round magnet "pinning" each piece of paper to the door.
+const PIN_CLASSES =
+  "absolute -top-3 left-1/2 h-6 w-6 -translate-x-1/2 rounded-full border-[2.5px] border-ink shadow-[1px_2px_0_rgb(0_0_0/0.2)]";
+
+// The pill-shaped magnets that work as buttons.
+const MAGNET_BUTTON_CLASSES =
+  "whitespace-nowrap rounded-full border-[2.5px] border-ink px-5 py-2.5 font-display text-base font-semibold shadow-[3px_4px_0_rgb(0_0_0/0.2)] transition hover:-translate-y-0.5 hover:brightness-105";
+
+// How many shopping list lines fit on the notepad before "+ N more".
+const NOTEPAD_LINES = 5;
 
 interface PlanEntry {
   id: string;
   plan_date: string;
   meal_slot: MealSlot;
   servings: number;
-  recipe: { id: string; title: string } | null;
+  recipe: { id: string; title: string; description: string | null; image_url: string | null } | null;
 }
 
-// How many items are on this week's shopping list, and how many are
-// still unticked — the one line of text on the "Shopping list" card. The
-// list is only ever rebuilt from the planner when something asks it to
-// (see syncShoppingListFromPlanner), so it's synced here first, exactly
-// as the shopping list page does on every visit — otherwise a meal added
-// since that page was last opened wouldn't be counted, and this card
-// would show a number the list itself then contradicts.
+interface NotepadItem {
+  id: string;
+  name: string;
+  is_checked: boolean;
+}
+
+// What's written on the shopping notepad: how many items are still
+// unticked this week, and the first few of them. The list is only ever
+// rebuilt from the planner when something asks it to (see
+// syncShoppingListFromPlanner), so it's synced here first, exactly as
+// the shopping list page does on every visit — otherwise a meal added
+// since that page was last opened wouldn't be counted, and this notepad
+// would show a list the real one then contradicts.
 //
 // Its own async component (rendered inside a <Suspense>) rather than
 // part of DashboardPage's own data loading: that sync is several
 // database round trips, and nothing else on the page needs its result.
-async function ShoppingSummary({ userId, weekStartISO }: { userId: string; weekStartISO: string }) {
+async function ShoppingNotepad({ userId, weekStartISO }: { userId: string; weekStartISO: string }) {
   const supabase = await createClient();
   await syncShoppingListFromPlanner(supabase, userId, weekStartISO);
 
@@ -51,23 +77,56 @@ async function ShoppingSummary({ userId, weekStartISO }: { userId: string; weekS
   const { data: items } = list
     ? await supabase
         .from("shopping_list_items")
-        .select("is_checked")
+        .select("id, name, is_checked")
         .eq("shopping_list_id", list.id)
-        .returns<Array<{ is_checked: boolean }>>()
+        .order("name")
+        .returns<NotepadItem[]>()
     : { data: null };
 
-  const total = items?.length ?? 0;
-  const left = (items ?? []).filter((item) => !item.is_checked).length;
+  const all = items ?? [];
+  const left = all.filter((item) => !item.is_checked);
+  // Still-to-buy items first; ticked ones only fill whatever lines are
+  // left over, so the notepad never leads with things already bought.
+  const shown = [...left, ...all.filter((item) => item.is_checked)].slice(0, NOTEPAD_LINES);
+  const hidden = all.length - shown.length;
 
-  if (total === 0) {
-    return <>Fills itself from your meal plan</>;
-  }
-  if (left === 0) {
-    return <>All {total} items ticked off this week</>;
-  }
   return (
     <>
-      {left} {left === 1 ? "item" : "items"} left to buy this week
+      <h2 className="mb-3 flex items-baseline justify-between gap-3 font-display text-[28px] font-bold leading-none text-ink">
+        Shopping
+        <small className="font-sans text-[13px] font-extrabold text-ink-soft">
+          {all.length === 0 ? "empty" : left.length === 0 ? "all done" : `${left.length} left`}
+        </small>
+      </h2>
+      {all.length === 0 ? (
+        <p className="py-2 text-sm font-bold leading-[38.5px] text-ink-soft">
+          Nothing to buy yet. It fills itself from your meal plan.
+        </p>
+      ) : (
+        <ul>
+          {shown.map((item) => (
+            <li
+              key={item.id}
+              className={`flex h-[38.5px] items-center gap-2.5 text-[15px] font-bold xl:text-base ${
+                item.is_checked ? "text-ink-faint line-through" : "text-ink"
+              }`}
+            >
+              <span
+                aria-hidden
+                className={`h-[18px] w-[18px] flex-none rounded-[5px] border-[2.5px] border-ink ${
+                  item.is_checked ? "bg-leaf-400" : "bg-cream-card"
+                }`}
+              />
+              <span className="truncate">{item.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {hidden > 0 && (
+        <span className="mt-2.5 block text-[13px] font-extrabold text-ink-soft">
+          + {hidden} more on the list
+        </span>
+      )}
     </>
   );
 }
@@ -117,8 +176,8 @@ export default async function DashboardPage() {
   });
 
   // The whole current week (Monday-anchored, same boundaries as the
-  // planner), not just today — today's strip and the week summary below
-  // are both read out of this one query.
+  // planner), not just today — today's sticky note and the week's row
+  // of magnets are both read out of this one query.
   const weekStart = resolveWeekStart(undefined);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -126,7 +185,7 @@ export default async function DashboardPage() {
 
   const { data: weekEntries } = await supabase
     .from("meal_plan_entries")
-    .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title)")
+    .select("id, plan_date, meal_slot, servings, recipe:recipes(id, title, description, image_url)")
     .eq("user_id", user.id)
     .gte("plan_date", weekStartISO)
     .lte("plan_date", toISODate(addDays(weekStart, 6)))
@@ -157,248 +216,278 @@ export default async function DashboardPage() {
           ? "Plan your dinners, wrangle a shopping list, and never stand in front of the fridge wondering again."
           : "Nothing planned for tonight yet.";
 
+  // The meal on the pinned photo: tonight's dinner if there is one,
+  // otherwise whatever else is planned today, latest meal first.
+  const featuredSlot = (["dinner", "lunch", "breakfast"] as const).find(
+    (slot) => todayBySlot.get(slot)?.recipe,
+  );
+  const featured = featuredSlot ? (todayBySlot.get(featuredSlot)?.recipe ?? null) : null;
+
+  // Only needed when the photo falls back to a food character (no
+  // uploaded picture): the character is guessed from the recipe's
+  // ingredients, same as on its recipe card.
+  const { data: featuredIngredients } =
+    featured && !featured.image_url
+      ? await supabase
+          .from("recipe_ingredients")
+          .select("name")
+          .eq("recipe_id", featured.id)
+          .returns<Array<{ name: string }>>()
+      : { data: null };
+
   return (
-    // Uses the whole window rather than a narrow centered column: the
-    // same 1600px cap as the planner, and at least the full height under
-    // the nav bar. On a wide screen the greeting sits on the left with
-    // today + this week beside it, vertically centered in whatever
-    // height is left over, and the three big cards run along the bottom.
-    // Below xl it all stacks into one column in the same order.
-    <main className="mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-[1600px] flex-col gap-8 px-6 py-8 sm:px-10">
-      <div className="grid flex-1 items-center gap-8 xl:grid-cols-2 xl:gap-14">
-      {/* hero */}
-      <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:gap-10 sm:text-left">
-        <Mascot className="h-40 w-36 flex-none 2xl:h-52 2xl:w-[187px]" />
-        <div>
-          <h1 className="-rotate-[0.5deg] font-display text-3xl font-bold leading-tight text-ink sm:text-5xl 2xl:text-6xl">
-            Hey {firstName}, what&apos;s cooking this week?
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-soft sm:mx-0 sm:text-lg">
-            {heroLine}
-          </p>
-          {/* Only while tonight's dinner slot is still empty — a shortcut
-              into the existing "Ask AI" form with Dinner already picked
-              (see the `meal` param in recipes/suggest/page.tsx). Same
-              button style as "Suggest with AI" on the recipes page. */}
-          {!todayBySlot.has("dinner") && (
-            <Link
-              href="/recipes/suggest?meal=dinner"
-              className="wobble-btn hand-shadow mt-5 inline-block bg-citrus-400 px-5 py-2.5 font-display text-sm font-semibold text-ink transition hover:brightness-105"
-            >
-              &#10022; Suggest tonight&apos;s dinner
-            </Link>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-6">
-      {/* Today's three meals straight from the planner, so "what am I
-          cooking today?" is answered without leaving this page. A planned
-          meal links to its recipe; an empty slot links to this week's
-          planner to fill it. */}
-      <section>
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
-          <h2 className="font-display text-2xl font-bold text-ink">Today&apos;s meals</h2>
-          <p className="text-sm font-bold text-ink-soft">{todayLabel}</p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {MEAL_SLOTS.map((slot) => {
-            const entry = todayBySlot.get(slot);
-            const style = SLOT_STYLES[slot];
-
-            // entry.recipe is null if the recipe isn't visible to this
-            // user any more — nothing to link to, so it's shown as an
-            // empty slot rather than a card with no title.
-            if (entry?.recipe) {
-              return (
-                <Link
-                  key={slot}
-                  href={`/recipes/${entry.recipe.id}`}
-                  className={`flex min-h-[104px] flex-col xl:min-h-[150px] rounded-[12px_15px_11px_14px] border-2 border-ink p-3 transition hover:-translate-y-0.5 hover:brightness-105 ${style.cell}`}
-                >
-                  <span className="font-display text-xs font-semibold uppercase tracking-wide text-ink">
-                    {slot}
-                  </span>
-                  <span className="mt-1 line-clamp-2 font-display text-lg font-semibold leading-snug text-ink">
-                    {entry.recipe.title}
-                  </span>
-                  <span className="mt-auto pt-1 text-xs font-bold text-ink">
-                    {entry.servings} {entry.servings === 1 ? "serving" : "servings"}
-                  </span>
-                </Link>
-              );
-            }
-
-            return (
-              <Link
-                key={slot}
-                href={`/planner?week=${todayISO}`}
-                className="group flex min-h-[104px] flex-col xl:min-h-[150px] rounded-xl border-2 border-dashed border-ink-faint p-3 transition hover:border-ink hover:bg-cream-deep"
-              >
-                <span
-                  className={`font-display text-xs font-semibold uppercase tracking-wide ${style.label}`}
-                >
-                  {slot}
-                </span>
-                <span className="mt-1 font-display text-lg font-semibold text-ink-soft transition group-hover:text-ink">
-                  + Add meal
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* The planner's own "X of Y meals planned" count and progress
-          bar, plus one column per day with a dot per meal slot (filled
-          in that slot's color once something's planned) — the whole
-          week's state at a glance, and one click from the planner. */}
-      <Link
-        href="/planner"
-        className="wobble-b flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-2 border-ink bg-cream-card p-5 transition hover:bg-cream-deep"
-      >
-        <div>
-          <p className="font-display text-xs font-semibold uppercase tracking-widest text-leaf-600">
-            This week
-          </p>
-          <p className="mt-1 font-display text-2xl font-bold text-ink">
-            {filledSlots} of {totalSlots} meals planned
-          </p>
-          <div
-            aria-hidden
-            className="mt-2 h-2.5 w-52 overflow-hidden rounded-full border-2 border-ink bg-cream-card"
-          >
-            <div
-              className="h-full rounded-full bg-leaf-400"
-              style={{ width: `${Math.round((filledSlots / totalSlots) * 100)}%` }}
-            />
+    // The home page is a fridge door. It takes (almost) the whole window —
+    // no max-width, just a little breathing room at the edges — and at
+    // least the full height under the nav bar: a freezer drawer across
+    // the top holding the greeting, and the main door below it with
+    // everything "stuck" to it — today's meals on a sticky note, a
+    // pinned photo of tonight's dinner, the shopping list on a notepad,
+    // the week as a row of magnets, and magnet buttons to the other
+    // pages. See the .fridge-* / .notepad-lines classes in globals.css
+    // for the few bits Tailwind's own scales don't cover.
+    <main className="flex min-h-[calc(100dvh-4.5rem)] w-full flex-col px-3 py-4 sm:px-6 sm:py-5">
+      <div className="hand-shadow flex flex-1 flex-col overflow-hidden rounded-[28px] border-[3px] border-ink sm:rounded-[34px]">
+        {/* freezer drawer */}
+        <div className="fridge-freezer relative flex flex-wrap items-center gap-x-7 gap-y-4 border-b-[3px] border-ink px-5 py-5 md:pl-10 md:pr-24">
+          <div className="flex h-[84px] w-[84px] flex-none -rotate-[5deg] items-center justify-center rounded-full border-[3px] border-ink bg-cream-card shadow-[4px_5px_0_rgb(0_0_0/0.2)] md:h-[118px] md:w-[118px]">
+            <Mascot className="h-16 w-14 md:h-[89px] md:w-[78px]" />
           </div>
+          <div className="min-w-0 flex-1 basis-64">
+            <h1 className="origin-left -rotate-1 font-display text-3xl font-bold leading-[1.05] text-ink md:text-5xl 2xl:text-[54px]">
+              Hey {firstName}, what&apos;s cooking?
+            </h1>
+            <p className="mt-2 max-w-2xl text-[15px] font-bold text-ink-soft md:text-lg">{heroLine}</p>
+          </div>
+          <div className="flex items-center gap-5 md:ml-auto">
+            <div aria-hidden className="hidden gap-1.5 xl:flex">
+              {LETTER_MAGNETS.map(({ letter, className }) => (
+                <span
+                  key={letter}
+                  className={`flex h-11 w-[38px] items-center justify-center rounded-[9px] border-[2.5px] border-ink font-display text-[26px] font-bold text-cream shadow-[2px_3px_0_rgb(0_0_0/0.2)] ${className}`}
+                >
+                  {letter}
+                </span>
+              ))}
+            </div>
+            {/* Only while tonight's dinner slot is still empty — a shortcut
+                into the existing "Ask AI" form with Dinner already picked
+                (see the `meal` param in recipes/suggest/page.tsx). */}
+            {!todayBySlot.has("dinner") && (
+              <Link
+                href="/recipes/suggest?meal=dinner"
+                className={`${MAGNET_BUTTON_CLASSES} bg-citrus-400 text-ink`}
+              >
+                &#10022; Suggest tonight&apos;s dinner
+              </Link>
+            )}
+          </div>
+          <span aria-hidden className="fridge-handle absolute right-7 top-1/2 hidden h-[74px] -translate-y-1/2 md:block" />
         </div>
 
-        {/* aria-hidden: the dots only repeat, per day, what the sentence
-            above already says in total. */}
-        <div aria-hidden className="flex gap-2 sm:gap-3">
-          {weekDays.map((day, i) => {
-            const dateISO = toISODate(day);
-            const isToday = dateISO === todayISO;
-            return (
-              <div
-                key={dateISO}
-                className={`flex flex-col items-center gap-1 ${dateISO < todayISO ? "opacity-50" : ""}`}
-              >
-                <span className="text-[10px] font-extrabold uppercase tracking-wide text-ink-soft">
-                  {DAY_LABELS[i]}
-                </span>
-                <span
-                  className={`inline-flex h-6 w-6 items-center justify-center font-display text-sm font-bold text-ink ${
-                    isToday ? "rounded-full bg-citrus-400" : ""
+        {/* main door */}
+        <div className="fridge-door relative flex flex-1 flex-col gap-8 px-5 pb-6 pt-9 md:pb-8 md:pl-10 md:pr-24">
+          <span aria-hidden className="fridge-handle absolute right-7 top-9 hidden h-52 md:block" />
+
+          <div className="grid flex-1 items-start gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-[1.25fr_0.85fr_1fr] xl:gap-x-14">
+            {/* Sticky note: today's three meals straight from the planner.
+                A planned meal links to its recipe; an empty slot links to
+                this week's planner to fill it. */}
+            <section className="paper-shadow relative -rotate-2 border-[2.5px] border-ink bg-citrus-400 px-6 pb-6 pt-7 sm:px-7">
+              <span aria-hidden className={`${PIN_CLASSES} bg-tomato-400`} />
+              <h2 className="mb-3 flex items-baseline justify-between gap-3 font-display text-2xl font-bold leading-none text-ink xl:text-3xl">
+                Today
+                <small className="font-sans text-[13px] font-extrabold text-ink-soft">{todayLabel}</small>
+              </h2>
+              <ul>
+                {MEAL_SLOTS.map((slot) => {
+                  const entry = todayBySlot.get(slot);
+                  return (
+                    <li
+                      key={slot}
+                      className="border-b-2 border-dashed border-ink/25 py-2.5 last:border-b-0 last:pb-0"
+                    >
+                      <span className="mb-0.5 block text-[11px] font-extrabold uppercase tracking-wider text-ink/70">
+                        {slot}
+                      </span>
+                      {/* entry.recipe is null if the recipe isn't visible
+                          to this user any more — nothing to link to, so
+                          it's shown as an empty slot. */}
+                      {entry?.recipe ? (
+                        <Link
+                          href={`/recipes/${entry.recipe.id}`}
+                          className="flex items-baseline justify-between gap-3 font-display text-xl leading-tight text-ink hover:underline xl:text-2xl"
+                        >
+                          <span className="line-clamp-2">{entry.recipe.title}</span>
+                          <span className="flex-none font-sans text-xs font-extrabold text-ink/70">
+                            {entry.servings} {entry.servings === 1 ? "serving" : "servings"}
+                          </span>
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/planner?week=${todayISO}`}
+                          className="border-b-2 border-dashed border-ink font-display text-xl leading-tight text-ink/70 transition hover:text-ink xl:text-2xl"
+                        >
+                          + add something
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            {/* Pinned photo: tonight's dinner (or, failing that, whatever
+                else is planned today) — its uploaded picture if it has
+                one, otherwise the same food character its recipe card
+                shows. With nothing planned at all it's the mascot and a
+                nudge toward the planner. */}
+            <Link
+              href={featured ? `/recipes/${featured.id}` : `/planner?week=${todayISO}`}
+              className="paper-shadow relative mx-auto block w-full max-w-sm rotate-3 border-[2.5px] border-ink bg-cream-card px-4 pb-3 pt-4 text-center transition hover:rotate-1"
+            >
+              <span aria-hidden className={`${PIN_CLASSES} bg-leaf-400`} />
+              {featured?.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a
+                // handful of user-uploaded images doesn't need next/image's
+                // optimization pipeline (which also needs a configured
+                // remote pattern for the Supabase Storage host).
+                <img
+                  src={featured.image_url}
+                  alt=""
+                  className="aspect-[4/3] w-full border-[2.5px] border-ink object-cover"
+                />
+              ) : (
+                <div
+                  className={`flex aspect-[4/3] items-center justify-center border-[2.5px] border-ink ${
+                    featured ? "bg-tomato-400" : "bg-cream-deep"
                   }`}
                 >
-                  {day.getUTCDate()}
-                </span>
-                <span className="flex gap-0.5">
-                  {MEAL_SLOTS.map((slot) => (
-                    <span
-                      key={slot}
-                      className={`h-2 w-2 rounded-full border ${
-                        plannedCells.has(`${dateISO}_${slot}`)
-                          ? `border-ink ${SLOT_STYLES[slot].cell}`
-                          : "border-ink-faint"
-                      }`}
+                  {featured ? (
+                    <RecipeFoodMascot
+                      title={featured.title}
+                      description={featured.description}
+                      ingredientNames={(featuredIngredients ?? []).map((ingredient) => ingredient.name)}
+                      className="h-32 w-28 xl:h-40 xl:w-[140px]"
                     />
-                  ))}
-                </span>
+                  ) : (
+                    <Mascot className="h-28 w-24" />
+                  )}
+                </div>
+              )}
+              <p className="mt-2.5 line-clamp-2 font-display text-lg leading-tight text-ink xl:text-[22px]">
+                {featured ? featured.title : "Nothing planned yet"}
+              </p>
+              <small className="text-xs font-extrabold text-ink-soft">
+                {featured
+                  ? featuredSlot === "dinner"
+                    ? "tonight's dinner"
+                    : `today's ${featuredSlot}`
+                  : "pick something in the planner"}
+              </small>
+            </Link>
+
+            {/* Notepad: this week's shopping list. The whole pad opens the
+                real list — the tick boxes here only show what's done. */}
+            <Link
+              href="/shopping-list"
+              className="notepad-lines paper-shadow relative block rotate-[1.5deg] border-[2.5px] border-ink bg-cream-card px-6 pb-5 pt-8 transition hover:rotate-[0.5deg] md:col-span-2 md:max-w-md xl:col-span-1 xl:max-w-none"
+            >
+              <span aria-hidden className="absolute inset-x-0 top-0 h-3.5 border-b-[2.5px] border-ink bg-tomato-400" />
+              <span aria-hidden className={`${PIN_CLASSES} bg-blueberry-400`} />
+              <Suspense
+                fallback={
+                  <>
+                    <h2 className="mb-3 font-display text-[28px] font-bold leading-none text-ink">
+                      Shopping
+                    </h2>
+                    <p className="py-2 text-sm font-bold leading-[38.5px] text-ink-soft">
+                      Checking this week&apos;s list…
+                    </p>
+                  </>
+                }
+              >
+                <ShoppingNotepad userId={user.id} weekStartISO={weekStartISO} />
+              </Suspense>
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-6">
+            {/* The week as a row of day magnets: the planner's own "X of
+                Y planned" count and progress bar, then one magnet per day
+                with a dot per meal slot (filled in that slot's colour
+                once something's planned). One click from the planner. */}
+            <Link
+              href="/planner"
+              className="relative flex w-full -rotate-[0.6deg] flex-col gap-4 rounded-2xl border-[2.5px] border-ink bg-cream-card px-5 py-3.5 shadow-[4px_5px_0_rgb(0_0_0/0.18)] transition hover:rotate-0 sm:w-auto sm:flex-row sm:items-center"
+            >
+              <span aria-hidden className={`${PIN_CLASSES} bg-carrot-400`} />
+              <div className="font-display text-lg font-bold leading-tight text-ink">
+                <small className="block font-sans text-[11px] font-extrabold uppercase tracking-wider text-ink-soft">
+                  This week
+                </small>
+                {filledSlots} of {totalSlots} planned
+                <div
+                  aria-hidden
+                  className="mt-1.5 h-2.5 w-[120px] overflow-hidden rounded-full border-2 border-ink bg-cream-card"
+                >
+                  <div
+                    className="h-full bg-leaf-400"
+                    style={{ width: `${Math.round((filledSlots / totalSlots) * 100)}%` }}
+                  />
+                </div>
               </div>
-            );
-          })}
+              {/* aria-hidden: the dots only repeat, per day, what the
+                  count above already says in total. */}
+              <div aria-hidden className="flex gap-1 sm:gap-2">
+                {weekDays.map((day, i) => {
+                  const dateISO = toISODate(day);
+                  const isToday = dateISO === todayISO;
+                  return (
+                    <div
+                      key={dateISO}
+                      className={`flex h-[70px] flex-1 flex-col items-center justify-center gap-1 rounded-xl border-[2.5px] border-ink sm:h-[66px] sm:w-[58px] sm:flex-none sm:gap-0.5 sm:rounded-[15px] ${
+                        isToday
+                          ? "-rotate-[4deg] bg-citrus-400 shadow-[2px_3px_0_rgb(0_0_0/0.2)] sm:scale-110"
+                          : `bg-cream ${dateISO < todayISO ? "opacity-50" : ""}`
+                      }`}
+                    >
+                      <span className="text-[10px] font-extrabold uppercase leading-none text-ink-soft">
+                        {DAY_LABELS[i]}
+                      </span>
+                      <span className="font-display text-lg font-bold leading-none text-ink">
+                        {day.getUTCDate()}
+                      </span>
+                      <span className="flex gap-0.5">
+                        {MEAL_SLOTS.map((slot) => (
+                          <span
+                            key={slot}
+                            className={`h-2 w-2 rounded-full border ${
+                              plannedCells.has(`${dateISO}_${slot}`)
+                                ? `border-ink ${SLOT_DOT[slot]}`
+                                : "border-ink-faint"
+                            }`}
+                          />
+                        ))}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Link>
+
+            <div className="flex flex-wrap gap-3 lg:ml-auto">
+              <Link href="/recipes" className={`${MAGNET_BUTTON_CLASSES} bg-tomato-400 text-cream`}>
+                Recipes
+              </Link>
+              <Link href="/planner" className={`${MAGNET_BUTTON_CLASSES} bg-leaf-400 text-cream`}>
+                Planner
+              </Link>
+              <Link href="/shopping-list" className={`${MAGNET_BUTTON_CLASSES} bg-blueberry-400 text-cream`}>
+                Shopping list
+              </Link>
+            </div>
+          </div>
         </div>
-      </Link>
-      </div>
-      </div>
-
-      {/* action cards */}
-      <div className="grid gap-5 sm:grid-cols-3">
-        <Link
-          href="/recipes"
-          className="wobble-a hand-shadow relative -rotate-1 bg-tomato-400 p-6 xl:p-8 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
-        >
-          <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
-            <path
-              d="M6,30 L6,10 C6,7 8,5 11,5 L23,5 C26,5 28,7 28,10 L28,30"
-              fill="none"
-              stroke="oklch(99% 0.006 85)"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-            />
-            <path d="M6,14 L28,14" stroke="oklch(99% 0.006 85)" strokeWidth="2.5" />
-            <path
-              d="M12,5 L12,2 M22,5 L22,2"
-              stroke="oklch(99% 0.006 85)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          <p className="font-display text-xl font-semibold text-cream">Browse recipes</p>
-          <p className="mt-1 text-sm text-cream" style={{ opacity: 0.9 }}>
-            Your library, favorites, and AI ideas
-          </p>
-        </Link>
-
-        <Link
-          href="/planner"
-          className="wobble-b hand-shadow relative rotate-1 bg-leaf-400 p-6 xl:p-8 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
-        >
-          <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
-            <rect x="4" y="6" width="26" height="24" rx="3" fill="none" stroke="oklch(99% 0.006 85)" strokeWidth="2.5" />
-            <path d="M4,13 L30,13" stroke="oklch(99% 0.006 85)" strokeWidth="2.5" />
-            <path
-              d="M10,3 L10,8 M24,3 L24,8"
-              stroke="oklch(99% 0.006 85)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          <p className="font-display text-xl font-semibold text-cream">Meal planner</p>
-          <p className="mt-1 text-sm text-cream" style={{ opacity: 0.9 }}>
-            Fill the week, one slot at a time
-          </p>
-        </Link>
-
-        {/* Used to be an "Edit profile" card — the profile is one tap
-            away in the nav bar on every page, while the shopping list is
-            the third thing this app actually does and had no card here
-            at all. Same bag icon as its nav tab (see site-nav.tsx). */}
-        <Link
-          href="/shopping-list"
-          className="wobble-a hand-shadow relative -rotate-[0.6deg] bg-citrus-400 p-6 xl:p-8 transition duration-150 hover:z-10 hover:-translate-y-2 hover:scale-105 hover:rotate-0 hover:shadow-[8px_8px_0_oklch(24%_0.03_150)] hover:brightness-105 active:translate-y-0 active:scale-100"
-        >
-          <svg width="30" height="30" viewBox="0 0 34 34" className="mb-3">
-            <path
-              d="M8,11 L26,11 L24,29 L10,29 Z"
-              fill="none"
-              stroke="oklch(24% 0.03 150)"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M12,11 C12,6 14,4 17,4 C20,4 22,6 22,11"
-              fill="none"
-              stroke="oklch(24% 0.03 150)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          <p className="font-display text-xl font-semibold text-ink">Shopping list</p>
-          <p className="mt-1 text-sm text-ink-soft">
-            {/* The count needs the list re-synced first (see
-                ShoppingSummary above), which is by far the slowest thing
-                on this page — so it streams in on its own once it's
-                ready, instead of the whole dashboard waiting on it. */}
-            <Suspense fallback="Checking this week's list…">
-              <ShoppingSummary userId={user.id} weekStartISO={weekStartISO} />
-            </Suspense>
-          </p>
-        </Link>
       </div>
     </main>
   );
