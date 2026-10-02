@@ -86,16 +86,16 @@ body {
 .paper-shadow {
   box-shadow: 5px 6px 0 rgb(0 0 0 / 0.18);
 }
-/* Ruled lines for the shopping notepad, spaced to match its 38.5px-tall
-   rows. The 72px offset is the pad's top padding (32) + its heading
-   (28) + the heading's bottom margin (12), so each line lands along the
-   bottom of a row. */
+/* Ruled lines for the shopping notepad's list, one along the bottom of
+   each of its 38.5px-tall rows. `local` attachment makes the lines
+   scroll with the rows when the list is long enough to scroll, instead
+   of staying put while the text slides over them. */
 .notepad-lines {
   background-image: repeating-linear-gradient(
     transparent 0 37px,
     oklch(88% 0.04 235) 37px 38.5px
   );
-  background-position: 0 72px;
+  background-attachment: local;
 }
 
 /* A small idle rotation for the mascot on quieter pages (login, etc.) —

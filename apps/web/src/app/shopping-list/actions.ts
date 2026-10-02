@@ -262,6 +262,46 @@ export async function toggleItemChecked(itemId: string, currentlyChecked: boolea
   revalidatePath("/shopping-list");
 }
 
+// The home page's fridge notepad ticks items off through this (see
+// dashboard/shopping-notepad-list.tsx). It writes the same is_checked
+// column toggleItemChecked above does, on the same rows — the two pages
+// are two views of one list — with two deliberate differences:
+//
+// It *sets* the state it's given rather than flipping whatever the
+// caller believed the old state was, so a double-click or a retry can't
+// leave the item in the opposite state to the one on screen.
+//
+// And it doesn't call revalidatePath(). Doing so from a server action
+// makes Next.js re-render the page the action was called from — and for
+// the dashboard that would re-run the planner sync, which deletes and
+// re-inserts the generated items under brand-new ids while the notepad
+// is still holding the old ones (so the very next tick would miss).
+// Nothing is lost by skipping it: both pages are rendered fresh on every
+// visit, so the shopping list page picks the change up next time it's
+// opened anyway.
+//
+// As with toggleItemChecked, the RLS update policy on
+// shopping_list_items is what restricts this to the caller's own lists.
+export async function setItemChecked(itemId: string, checked: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  if (!itemId) {
+    return;
+  }
+
+  await supabase
+    .from("shopping_list_items")
+    .update({ is_checked: checked === true })
+    .eq("id", itemId);
+}
+
 export async function removeItem(itemId: string) {
   const supabase = await createClient();
   const {

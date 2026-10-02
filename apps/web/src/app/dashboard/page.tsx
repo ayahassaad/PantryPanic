@@ -7,6 +7,7 @@ import { addDays, resolveWeekStart, toISODate } from "@/lib/week";
 import { Mascot } from "@/components/mascot";
 import { syncShoppingListFromPlanner } from "@/app/shopping-list/actions";
 import { RecipeFoodMascot } from "@/app/recipes/[id]/recipe-food-mascot";
+import { ShoppingNotepadList, type NotepadItem } from "./shopping-notepad-list";
 
 // Same accent per meal slot as the planner grid (breakfast = citrus,
 // lunch = leaf, dinner = tomato), so a meal's dot here matches its cell
@@ -35,9 +36,6 @@ const PIN_CLASSES =
 const MAGNET_BUTTON_CLASSES =
   "whitespace-nowrap rounded-full border-[2.5px] border-ink px-5 py-2.5 font-display text-base font-semibold shadow-[3px_4px_0_rgb(0_0_0/0.2)] transition hover:-translate-y-0.5 hover:brightness-105";
 
-// How many shopping list lines fit on the notepad before "+ N more".
-const NOTEPAD_LINES = 5;
-
 interface PlanEntry {
   id: string;
   plan_date: string;
@@ -46,19 +44,34 @@ interface PlanEntry {
   recipe: { id: string; title: string; description: string | null; image_url: string | null } | null;
 }
 
-interface NotepadItem {
+interface ShoppingItemRow {
   id: string;
   name: string;
+  quantity: number | null;
+  unit: string | null;
   is_checked: boolean;
 }
 
-// What's written on the shopping notepad: how many items are still
-// unticked this week, and the first few of them. The list is only ever
+// Same display rounding as the shopping list page: 2 decimal places, so
+// "2 cups" never shows up as "2.0000000001 cups".
+function formatAmount(item: { quantity: number | null; unit: string | null }): string | null {
+  if (item.quantity == null) {
+    return item.unit ?? null;
+  }
+  const rounded = Math.round(item.quantity * 100) / 100;
+  return [rounded, item.unit].filter(Boolean).join(" ");
+}
+
+// What's written on the shopping notepad: this week's shopping list,
+// every item of it, tickable right there on the fridge (the ticking
+// itself is ShoppingNotepadList, a client component). The list is only ever
 // rebuilt from the planner when something asks it to (see
 // syncShoppingListFromPlanner), so it's synced here first, exactly as
 // the shopping list page does on every visit — otherwise a meal added
 // since that page was last opened wouldn't be counted, and this notepad
-// would show a list the real one then contradicts.
+// would show a list the real one then contradicts. Same table, same
+// rows, same order (category, then name) as that page, so the two are
+// always two views of one list.
 //
 // Its own async component (rendered inside a <Suspense>) rather than
 // part of DashboardPage's own data loading: that sync is several
@@ -77,58 +90,21 @@ async function ShoppingNotepad({ userId, weekStartISO }: { userId: string; weekS
   const { data: items } = list
     ? await supabase
         .from("shopping_list_items")
-        .select("id, name, is_checked")
+        .select("id, name, quantity, unit, is_checked")
         .eq("shopping_list_id", list.id)
+        .order("category")
         .order("name")
-        .returns<NotepadItem[]>()
+        .returns<ShoppingItemRow[]>()
     : { data: null };
 
-  const all = items ?? [];
-  const left = all.filter((item) => !item.is_checked);
-  // Still-to-buy items first; ticked ones only fill whatever lines are
-  // left over, so the notepad never leads with things already bought.
-  const shown = [...left, ...all.filter((item) => item.is_checked)].slice(0, NOTEPAD_LINES);
-  const hidden = all.length - shown.length;
+  const notepadItems: NotepadItem[] = (items ?? []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    amount: formatAmount(item),
+    isChecked: item.is_checked,
+  }));
 
-  return (
-    <>
-      <h2 className="mb-3 flex items-baseline justify-between gap-3 font-display text-[28px] font-bold leading-none text-ink">
-        Shopping
-        <small className="font-sans text-[13px] font-extrabold text-ink-soft">
-          {all.length === 0 ? "empty" : left.length === 0 ? "all done" : `${left.length} left`}
-        </small>
-      </h2>
-      {all.length === 0 ? (
-        <p className="py-2 text-sm font-bold leading-[38.5px] text-ink-soft">
-          Nothing to buy yet. It fills itself from your meal plan.
-        </p>
-      ) : (
-        <ul>
-          {shown.map((item) => (
-            <li
-              key={item.id}
-              className={`flex h-[38.5px] items-center gap-2.5 text-[15px] font-bold xl:text-base ${
-                item.is_checked ? "text-ink-faint line-through" : "text-ink"
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`h-[18px] w-[18px] flex-none rounded-[5px] border-[2.5px] border-ink ${
-                  item.is_checked ? "bg-leaf-400" : "bg-cream-card"
-                }`}
-              />
-              <span className="truncate">{item.name}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {hidden > 0 && (
-        <span className="mt-2.5 block text-[13px] font-extrabold text-ink-soft">
-          + {hidden} more on the list
-        </span>
-      )}
-    </>
-  );
+  return <ShoppingNotepadList items={notepadItems} />;
 }
 
 export default async function DashboardPage() {
@@ -386,12 +362,11 @@ export default async function DashboardPage() {
               </small>
             </Link>
 
-            {/* Notepad: this week's shopping list. The whole pad opens the
-                real list — the tick boxes here only show what's done. */}
-            <Link
-              href="/shopping-list"
-              className="notepad-lines paper-shadow relative block rotate-[1.5deg] border-[2.5px] border-ink bg-cream-card px-6 pb-5 pt-8 transition hover:rotate-[0.5deg] md:col-span-2 md:max-w-md xl:col-span-1 xl:max-w-none"
-            >
+            {/* Notepad: this week's shopping list, tickable in place — see
+                ShoppingNotepad above. Not a link as a whole any more
+                (it has checkboxes in it now); its heading and the line
+                at the bottom open the full list. */}
+            <div className="paper-shadow relative rotate-[1.5deg] border-[2.5px] border-ink bg-cream-card px-6 pb-5 pt-8 md:col-span-2 md:max-w-md xl:col-span-1 xl:max-w-none">
               <span aria-hidden className="absolute inset-x-0 top-0 h-3.5 border-b-[2.5px] border-ink bg-tomato-400" />
               <span aria-hidden className={`${PIN_CLASSES} bg-blueberry-400`} />
               <Suspense
@@ -400,7 +375,7 @@ export default async function DashboardPage() {
                     <h2 className="mb-3 font-display text-[28px] font-bold leading-none text-ink">
                       Shopping
                     </h2>
-                    <p className="py-2 text-sm font-bold leading-[38.5px] text-ink-soft">
+                    <p className="py-2 text-sm font-bold text-ink-soft">
                       Checking this week&apos;s list…
                     </p>
                   </>
@@ -408,7 +383,7 @@ export default async function DashboardPage() {
               >
                 <ShoppingNotepad userId={user.id} weekStartISO={weekStartISO} />
               </Suspense>
-            </Link>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-6">
