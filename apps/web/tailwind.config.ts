@@ -21,6 +21,14 @@ const config: Config = {
           700: "#31563A",
         },
 
+        // Every oklch() color below ends in "/ <alpha-value>": Tailwind 3
+        // only knows how to add transparency to hex/rgb/hsl colors by
+        // itself, so without that placeholder an opacity modifier on any
+        // of these (bg-ink/40, border-ink/25, bg-cream/70 …) silently
+        // produced no CSS at all — the class just did nothing. With it,
+        // Tailwind substitutes the opacity in (and plain bg-ink etc.
+        // still come out fully opaque).
+        //
         // The new "hand-drawn fruit" visual direction — see the
         // Pantry Panic visual-direction design canvas for the source.
         // Warm cream surfaces, an ink outline/text color, and a bright
@@ -28,44 +36,44 @@ const config: Config = {
         // convention (50 = light tint, 400 = vivid block, 600/700 =
         // darker for text/hover) so both scales behave the same way.
         cream: {
-          DEFAULT: "oklch(97% 0.018 85)", // page background
-          deep: "oklch(93% 0.03 85)", // section blocks, subtle panels
-          card: "oklch(99% 0.006 85)", // card / surface fill
+          DEFAULT: "oklch(97% 0.018 85 / <alpha-value>)", // page background
+          deep: "oklch(93% 0.03 85 / <alpha-value>)", // section blocks, subtle panels
+          card: "oklch(99% 0.006 85 / <alpha-value>)", // card / surface fill
         },
         ink: {
-          DEFAULT: "oklch(24% 0.03 150)", // primary text, outlines
-          soft: "oklch(45% 0.02 150)", // secondary text
-          faint: "oklch(70% 0.02 150)", // disabled / placeholder text
+          DEFAULT: "oklch(24% 0.03 150 / <alpha-value>)", // primary text, outlines
+          soft: "oklch(45% 0.02 150 / <alpha-value>)", // secondary text
+          faint: "oklch(70% 0.02 150 / <alpha-value>)", // disabled / placeholder text
         },
         tomato: {
-          50: "oklch(95% 0.03 25)",
-          400: "oklch(62% 0.19 25)",
-          600: "oklch(50% 0.18 25)",
-          700: "oklch(42% 0.16 25)",
+          50: "oklch(95% 0.03 25 / <alpha-value>)",
+          400: "oklch(62% 0.19 25 / <alpha-value>)",
+          600: "oklch(50% 0.18 25 / <alpha-value>)",
+          700: "oklch(42% 0.16 25 / <alpha-value>)",
         },
         citrus: {
-          50: "oklch(96% 0.03 95)",
-          400: "oklch(80% 0.15 95)",
-          600: "oklch(65% 0.14 90)",
-          700: "oklch(55% 0.13 88)",
+          50: "oklch(96% 0.03 95 / <alpha-value>)",
+          400: "oklch(80% 0.15 95 / <alpha-value>)",
+          600: "oklch(65% 0.14 90 / <alpha-value>)",
+          700: "oklch(55% 0.13 88 / <alpha-value>)",
         },
         leaf: {
-          50: "oklch(95% 0.03 145)",
-          400: "oklch(62% 0.13 145)",
-          600: "oklch(48% 0.12 145)",
-          700: "oklch(40% 0.11 145)",
+          50: "oklch(95% 0.03 145 / <alpha-value>)",
+          400: "oklch(62% 0.13 145 / <alpha-value>)",
+          600: "oklch(48% 0.12 145 / <alpha-value>)",
+          700: "oklch(40% 0.11 145 / <alpha-value>)",
         },
         carrot: {
-          50: "oklch(95% 0.03 55)",
-          400: "oklch(68% 0.17 55)",
-          600: "oklch(56% 0.16 52)",
-          700: "oklch(47% 0.15 50)",
+          50: "oklch(95% 0.03 55 / <alpha-value>)",
+          400: "oklch(68% 0.17 55 / <alpha-value>)",
+          600: "oklch(56% 0.16 52 / <alpha-value>)",
+          700: "oklch(47% 0.15 50 / <alpha-value>)",
         },
         blueberry: {
-          50: "oklch(95% 0.02 290)",
-          400: "oklch(65% 0.13 290)",
-          600: "oklch(52% 0.13 290)",
-          700: "oklch(42% 0.12 290)",
+          50: "oklch(95% 0.02 290 / <alpha-value>)",
+          400: "oklch(65% 0.13 290 / <alpha-value>)",
+          600: "oklch(52% 0.13 290 / <alpha-value>)",
+          700: "oklch(42% 0.12 290 / <alpha-value>)",
         },
       },
       fontFamily: {
