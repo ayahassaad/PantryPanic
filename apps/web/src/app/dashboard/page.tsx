@@ -32,7 +32,8 @@ const LETTER_MAGNETS = [
 const PIN_CLASSES =
   "absolute -top-3 left-1/2 h-6 w-6 -translate-x-1/2 rounded-full border-[2.5px] border-ink shadow-[1px_2px_0_rgb(0_0_0/0.2)]";
 
-// The pill-shaped magnets that work as buttons.
+// The pill-shaped magnet that works as a button ("Suggest tonight's
+// dinner", in the freezer drawer).
 const MAGNET_BUTTON_CLASSES =
   "whitespace-nowrap rounded-full border-[2.5px] border-ink px-5 py-2.5 font-display text-base font-semibold shadow-[3px_4px_0_rgb(0_0_0/0.2)] transition hover:-translate-y-0.5 hover:brightness-105";
 
@@ -218,8 +219,9 @@ export default async function DashboardPage() {
     // the top holding the greeting, and the main door below it with
     // everything "stuck" to it — today's meals on a sticky note, a
     // pinned photo of tonight's dinner, the shopping list on a notepad,
-    // the week as a row of magnets, and magnet buttons to the other
-    // pages. See the .fridge-* / .notepad-lines classes in globals.css
+    // and the week as a row of magnets. (No buttons to the other pages:
+    // the nav bar is right there on every screen size.) See the
+    // .fridge-* / .notepad-lines classes in globals.css
     // for the few bits Tailwind's own scales don't cover.
     <main className="flex min-h-[calc(100dvh-4.5rem)] w-full flex-col px-3 py-4 sm:px-6 sm:py-5">
       <div className="hand-shadow flex flex-1 flex-col overflow-hidden rounded-[28px] border-[3px] border-ink sm:rounded-[34px]">
@@ -450,17 +452,6 @@ export default async function DashboardPage() {
               </div>
             </Link>
 
-            <div className="flex flex-wrap gap-3 lg:ml-auto">
-              <Link href="/recipes" className={`${MAGNET_BUTTON_CLASSES} bg-tomato-400 text-cream`}>
-                Recipes
-              </Link>
-              <Link href="/planner" className={`${MAGNET_BUTTON_CLASSES} bg-leaf-400 text-cream`}>
-                Planner
-              </Link>
-              <Link href="/shopping-list" className={`${MAGNET_BUTTON_CLASSES} bg-blueberry-400 text-cream`}>
-                Shopping list
-              </Link>
-            </div>
           </div>
         </div>
       </div>
