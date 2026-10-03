@@ -81,6 +81,48 @@ body {
   background: oklch(84% 0.02 200);
   box-shadow: 3px 3px 0 rgb(0 0 0 / 0.15);
 }
+/* The "YUM!" letter magnets on the fridge: a quick little jiggle — a few
+   small back-and-forth twists, as if someone just closed the door — then
+   a long still pause before the next one, so it catches the eye without
+   buzzing constantly. Each letter starts a beat after the one before it
+   (see LETTER_MAGNETS in dashboard/page.tsx). Hovering the row shakes
+   them again straight away. Off entirely for anyone who's asked their
+   system for reduced motion, since it's pure decoration. */
+.magnet-shake {
+  animation: magnet-shake 4s ease-in-out infinite;
+  transform-origin: 50% 20%;
+}
+.group:hover .magnet-shake {
+  animation-duration: 0.8s;
+}
+@keyframes magnet-shake {
+  0%,
+  16%,
+  100% {
+    transform: rotate(0deg);
+  }
+  2% {
+    transform: rotate(-7deg);
+  }
+  5% {
+    transform: rotate(6deg);
+  }
+  8% {
+    transform: rotate(-4deg);
+  }
+  11% {
+    transform: rotate(3deg);
+  }
+  14% {
+    transform: rotate(-1deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .magnet-shake {
+    animation: none;
+  }
+}
+
 /* Softer than .hand-shadow's solid ink: a piece of paper stuck to the
    door, not a sticker. */
 .paper-shadow {

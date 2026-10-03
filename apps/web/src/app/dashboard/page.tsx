@@ -20,12 +20,17 @@ const SLOT_DOT: Record<MealSlot, string> = {
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// Purely decorative alphabet magnets in the freezer drawer.
+// Purely decorative alphabet magnets in the freezer drawer. Each one's
+// resting tilt lives on an outer wrapper and its jiggle (.magnet-shake in
+// globals.css) on the letter itself, because both are CSS transforms — on
+// one element the animation would simply replace the tilt. The delays
+// are staggered so the shake ripples Y → U → M → ! instead of all four
+// twitching at once.
 const LETTER_MAGNETS = [
-  { letter: "Y", className: "bg-tomato-400 -rotate-[8deg]" },
-  { letter: "U", className: "bg-leaf-400 rotate-[5deg] translate-y-1" },
-  { letter: "M", className: "bg-blueberry-400 -rotate-[3deg] -translate-y-0.5" },
-  { letter: "!", className: "bg-carrot-400 rotate-[9deg] translate-y-0.5" },
+  { letter: "Y", color: "bg-tomato-400", tilt: "-rotate-[8deg]", delay: "0s" },
+  { letter: "U", color: "bg-leaf-400", tilt: "rotate-[5deg] translate-y-1", delay: "0.12s" },
+  { letter: "M", color: "bg-blueberry-400", tilt: "-rotate-[3deg] -translate-y-0.5", delay: "0.24s" },
+  { letter: "!", color: "bg-carrot-400", tilt: "rotate-[9deg] translate-y-0.5", delay: "0.36s" },
 ];
 
 // The round magnet "pinning" each piece of paper to the door.
@@ -237,13 +242,15 @@ export default async function DashboardPage() {
             <p className="mt-2 max-w-2xl text-[15px] font-bold text-ink-soft md:text-lg">{heroLine}</p>
           </div>
           <div className="flex items-center gap-5 md:ml-auto">
-            <div aria-hidden className="hidden gap-1.5 xl:flex">
-              {LETTER_MAGNETS.map(({ letter, className }) => (
-                <span
-                  key={letter}
-                  className={`flex h-11 w-[38px] items-center justify-center rounded-[9px] border-[2.5px] border-ink font-display text-[26px] font-bold text-cream shadow-[2px_3px_0_rgb(0_0_0/0.2)] ${className}`}
-                >
-                  {letter}
+            <div aria-hidden className="group hidden gap-1.5 xl:flex">
+              {LETTER_MAGNETS.map(({ letter, color, tilt, delay }) => (
+                <span key={letter} className={`block ${tilt}`}>
+                  <span
+                    className={`magnet-shake flex h-11 w-[38px] items-center justify-center rounded-[9px] border-[2.5px] border-ink font-display text-[26px] font-bold text-cream shadow-[2px_3px_0_rgb(0_0_0/0.2)] ${color}`}
+                    style={{ animationDelay: delay }}
+                  >
+                    {letter}
+                  </span>
                 </span>
               ))}
             </div>
