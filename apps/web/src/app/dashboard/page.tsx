@@ -232,8 +232,12 @@ export default async function DashboardPage() {
       <div className="hand-shadow flex flex-1 flex-col overflow-hidden rounded-[28px] border-[3px] border-ink sm:rounded-[34px]">
         {/* freezer drawer */}
         <div className="fridge-freezer relative flex flex-wrap items-center gap-x-7 gap-y-4 border-b-[3px] border-ink px-5 py-5 md:pl-10 md:pr-24">
-          <div className="flex h-[84px] w-[84px] flex-none -rotate-[5deg] items-center justify-center rounded-full border-[3px] border-ink bg-cream-card shadow-[4px_5px_0_rgb(0_0_0/0.2)] md:h-[118px] md:w-[118px]">
-            <Mascot className="h-16 w-14 md:h-[89px] md:w-[78px]" />
+          {/* The mascot as a die-cut novelty magnet: no round badge
+              behind it any more, just the character itself with a thick
+              white cut edge following its outline and a shadow where it
+              sits on the door (see .die-cut-magnet in globals.css). */}
+          <div className="die-cut-magnet flex-none -rotate-[6deg]">
+            <Mascot className="h-[92px] w-20 md:h-32 md:w-28" />
           </div>
           <div className="min-w-0 flex-1 basis-64">
             <h1 className="origin-left -rotate-1 font-display text-3xl font-bold leading-[1.05] text-ink md:text-5xl 2xl:text-[54px]">

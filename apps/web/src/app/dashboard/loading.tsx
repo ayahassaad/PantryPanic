@@ -14,7 +14,7 @@ export default function DashboardLoading() {
       <SkeletonStatus />
       <div className="hand-shadow flex flex-1 flex-col overflow-hidden rounded-[28px] border-[3px] border-ink sm:rounded-[34px]">
         <div className="fridge-freezer relative flex flex-wrap items-center gap-x-7 gap-y-4 border-b-[3px] border-ink px-5 py-5 md:pl-10 md:pr-24">
-          <Skeleton className="h-[84px] w-[84px] flex-none rounded-full md:h-[118px] md:w-[118px]" />
+          <Skeleton className="h-[92px] w-20 flex-none rounded-[40%] md:h-32 md:w-28" />
           <div className="min-w-0 flex-1 basis-64">
             <Skeleton className="h-9 w-4/5 max-w-xl rounded-xl md:h-12" />
             <Skeleton className="mt-3 h-5 w-3/5 max-w-sm rounded-lg" />

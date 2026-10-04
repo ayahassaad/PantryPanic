@@ -123,6 +123,27 @@ body {
   }
 }
 
+/* The mascot magnet on the fridge's freezer drawer, made to look like a
+   die-cut novelty magnet. Stacked drop-shadow filters trace the actual
+   silhouette of whatever's inside (body, arms, legs and all), so no
+   hand-drawn outline shape is needed: first a thick white "cut edge"
+   (eight offsets, diagonals included, so its corners come out round),
+   then a thin ink rim around that, then the soft offset shadow of the
+   magnet sitting on the door. Lifts and straightens a little on hover,
+   like it's being picked up. */
+.die-cut-magnet {
+  filter: drop-shadow(4px 0 0 #fff) drop-shadow(-4px 0 0 #fff) drop-shadow(0 4px 0 #fff)
+    drop-shadow(0 -4px 0 #fff) drop-shadow(3px 3px 0 #fff) drop-shadow(-3px -3px 0 #fff)
+    drop-shadow(3px -3px 0 #fff) drop-shadow(-3px 3px 0 #fff)
+    drop-shadow(1.5px 0 0 var(--foreground)) drop-shadow(-1.5px 0 0 var(--foreground))
+    drop-shadow(0 1.5px 0 var(--foreground)) drop-shadow(0 -1.5px 0 var(--foreground))
+    drop-shadow(4px 6px 0 rgb(0 0 0 / 0.2));
+  transition: transform 0.2s ease;
+}
+.die-cut-magnet:hover {
+  transform: rotate(-2deg) translateY(-3px);
+}
+
 /* Softer than .hand-shadow's solid ink: a piece of paper stuck to the
    door, not a sticker. */
 .paper-shadow {
