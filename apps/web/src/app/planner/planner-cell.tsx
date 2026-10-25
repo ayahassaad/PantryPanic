@@ -371,35 +371,14 @@ export function PlannerCell({
 
     return (
       <div
-        draggable={canPickUp}
-        onDragStart={(event) => {
-          if (!movable) {
-            return;
-          }
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", movable.title);
-          // Deferred a tick: startMove re-renders this very cell (the
-          // overlay appears on top of it), and changing the dragged
-          // element's DOM synchronously inside dragstart makes Chrome
-          // abort the drag before it begins.
-          setTimeout(() => startMove(movable), 0);
-        }}
-        // Fires after "drop" on a successful drop (by which point the
-        // move has already been handed off and this is a no-op), and on
-        // its own when the meal is let go anywhere that isn't a slot —
-        // which should just put it down again. Deferred for the same
-        // reason as above, so it can never run ahead of that startMove.
-        onDragEnd={() => setTimeout(cancelMove, 0)}
-        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass} ${pastClass} ${busyClass} ${
-          canPickUp ? "cursor-grab active:cursor-grabbing" : ""
-        }`}
+        className={`relative flex ${CELL_HEIGHT} flex-col overflow-hidden rounded-[12px_15px_11px_14px] border-2 border-ink p-2 ${cellClass} ${pastClass} ${busyClass}`}
       >
         {entry.recipeId ? (
           <Link
             href={`/recipes/${entry.recipeId}`}
             // Links are draggable on their own by default (dragging one
-            // drags its URL) — turned off so a drag that starts on the
-            // title picks up the whole card instead.
+            // drags its URL) — turned off so this never fights the move
+            // icon's own drag below.
             draggable={false}
             className={`flex flex-1 flex-col pr-6 transition hover:brightness-110 ${textClass}`}
           >
@@ -468,19 +447,43 @@ export function PlannerCell({
           &times;
         </button>
 
-        {/* The same pick-up as dragging the card, as a button — the only
-            way to move a meal on a touch screen (HTML drag-and-drop
-            doesn't exist there) or by keyboard, and what makes moving
-            possible in the one-day-at-a-time phone layout at all: press
-            it, switch day, tap the slot. Sits under the "x" in the strip
-            the title's right padding already keeps clear. */}
+        {/* Both the click target AND the one draggable element for this
+            card — press it to pick the meal up (the only way to move a
+            meal on a touch screen, where HTML drag-and-drop doesn't
+            exist, or by keyboard), or drag straight from it with a
+            mouse. Used to be the whole card that was draggable, which
+            meant an ordinary click with the slightest bit of mouse
+            movement could start a drag by accident instead of opening
+            the recipe. Scoping draggable down to just this icon fixes
+            that without losing drag-to-move for mouse users. Sits under
+            the "x" in the strip the title's right padding already keeps
+            clear. */}
         {movable && !isSelecting && (
           <button
             type="button"
+            draggable={canPickUp}
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", movable.title);
+              // Deferred a tick: startMove re-renders this very cell (the
+              // overlay appears on top of it), and changing the dragged
+              // element's DOM synchronously inside dragstart makes Chrome
+              // abort the drag before it begins.
+              setTimeout(() => startMove(movable), 0);
+            }}
+            // Fires after "drop" on a successful drop (by which point the
+            // move has already been handed off and this is a no-op), and
+            // on its own when the meal is let go anywhere that isn't a
+            // slot — which should just put it down again. Deferred for
+            // the same reason as above, so it can never run ahead of
+            // that startMove.
+            onDragEnd={() => setTimeout(cancelMove, 0)}
             onClick={() => startMove(movable)}
             aria-label="Move this meal"
             title="Move this meal"
-            className={`absolute right-0.5 top-8 flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-black/10 ${textClass}`}
+            className={`absolute right-0.5 top-8 flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-black/10 ${
+              canPickUp ? "cursor-grab active:cursor-grabbing" : ""
+            } ${textClass}`}
             style={{ opacity: 0.75 }}
           >
             <svg
