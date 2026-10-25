@@ -315,12 +315,17 @@ export function PlannerCell({
             ? `Swap with ${entry.recipeTitle ?? "this meal"}`
             : "Move the meal here"
       }
+      // Neutral ink tint rather than a color — a translucent blue over
+      // the citrus (breakfast) and leaf (lunch) cells read as muddy,
+      // off-looking greens and browns instead of a clean highlight.
+      // Dimming toward ink/cream reads as "available target" the same
+      // way on every slot color instead of clashing with some of them.
       className={`absolute inset-0 z-20 flex items-center justify-center transition ${
         isMoveSource
           ? "bg-cream/70"
           : dragOver
-            ? "bg-blueberry-400/40"
-            : "bg-blueberry-400/10 hover:bg-blueberry-400/40"
+            ? "bg-ink/30"
+            : "bg-ink/10 hover:bg-ink/25"
       }`}
     >
       {/* pointer-events-none: otherwise dragging across the label counts
